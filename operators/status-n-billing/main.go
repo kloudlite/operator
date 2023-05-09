@@ -1,6 +1,9 @@
 package main
 
 import (
+	"google.golang.org/grpc"
+
+	clustersv1 "github.com/kloudlite/operator/apis/clusters/v1"
 	crdsv1 "github.com/kloudlite/operator/apis/crds/v1"
 	mongodbMsvcv1 "github.com/kloudlite/operator/apis/mongodb.msvc/v1"
 	mysqlMsvcv1 "github.com/kloudlite/operator/apis/mysql.msvc/v1"
@@ -8,12 +11,12 @@ import (
 	serverlessv1 "github.com/kloudlite/operator/apis/serverless/v1"
 	"github.com/kloudlite/operator/grpc-interfaces/grpc/messages"
 	"github.com/kloudlite/operator/operator"
+	byocClientWatcher "github.com/kloudlite/operator/operators/status-n-billing/internal/controllers/byoc-client-watcher"
 	statusWatcher "github.com/kloudlite/operator/operators/status-n-billing/internal/controllers/status-watcher"
 	env "github.com/kloudlite/operator/operators/status-n-billing/internal/env"
 	libGrpc "github.com/kloudlite/operator/pkg/grpc"
 	"github.com/kloudlite/operator/pkg/kubectl"
 	"github.com/kloudlite/operator/pkg/logging"
-	"google.golang.org/grpc"
 )
 
 type grpcHandler struct {
@@ -33,9 +36,9 @@ func main() {
 	mgr := operator.New("status-n-billing-watcher")
 
 	getGrpcConnection := func() (*grpc.ClientConn, error) {
-		if mgr.Operator().IsDev {
-			return libGrpc.Connect(ev.GrpcAddr)
-		}
+		// if mgr.Operator().IsDev {
+		// 	return libGrpc.Connect(ev.GrpcAddr)
+		// }
 		return libGrpc.ConnectSecure(ev.GrpcAddr)
 	}
 
@@ -43,6 +46,7 @@ func main() {
 		crdsv1.AddToScheme,
 		mongodbMsvcv1.AddToScheme, mysqlMsvcv1.AddToScheme, redisMsvcv1.AddToScheme,
 		serverlessv1.AddToScheme,
+		clustersv1.AddToScheme,
 	)
 
 	mgr.RegisterControllers(
@@ -50,8 +54,11 @@ func main() {
 			Name:              "status-watcher",
 			Env:               ev,
 			GetGrpcConnection: getGrpcConnection,
-			// Producer: producer,
-			// Notifier: types.NewNotifier(ev.ClusterId, producer, ev.KafkaTopicStatusUpdates),
+		},
+		&byocClientWatcher.Reconciler{
+			Name:              "byoc-client-watcher",
+			Env:               ev,
+			GetGrpcConnection: getGrpcConnection,
 		},
 		//&pipelineRunWatcher.Reconciler{
 		//	Name:       "pipeline-run",
