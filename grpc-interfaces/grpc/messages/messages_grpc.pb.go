@@ -26,6 +26,7 @@ type MessageDispatchServiceClient interface {
 	ReceiveErrors(ctx context.Context, opts ...grpc.CallOption) (MessageDispatchService_ReceiveErrorsClient, error)
 	ReceiveStatusMessages(ctx context.Context, opts ...grpc.CallOption) (MessageDispatchService_ReceiveStatusMessagesClient, error)
 	ReceiveInfraUpdates(ctx context.Context, opts ...grpc.CallOption) (MessageDispatchService_ReceiveInfraUpdatesClient, error)
+	ReceiveBYOCClientUpdates(ctx context.Context, opts ...grpc.CallOption) (MessageDispatchService_ReceiveBYOCClientUpdatesClient, error)
 	GetAccessToken(ctx context.Context, in *GetClusterTokenIn, opts ...grpc.CallOption) (*GetClusterTokenOut, error)
 }
 
@@ -171,6 +172,40 @@ func (x *messageDispatchServiceReceiveInfraUpdatesClient) CloseAndRecv() (*Empty
 	return m, nil
 }
 
+func (c *messageDispatchServiceClient) ReceiveBYOCClientUpdates(ctx context.Context, opts ...grpc.CallOption) (MessageDispatchService_ReceiveBYOCClientUpdatesClient, error) {
+	stream, err := c.cc.NewStream(ctx, &MessageDispatchService_ServiceDesc.Streams[4], "/MessageDispatchService/ReceiveBYOCClientUpdates", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &messageDispatchServiceReceiveBYOCClientUpdatesClient{stream}
+	return x, nil
+}
+
+type MessageDispatchService_ReceiveBYOCClientUpdatesClient interface {
+	Send(*BYOCClientUpdateData) error
+	CloseAndRecv() (*Empty, error)
+	grpc.ClientStream
+}
+
+type messageDispatchServiceReceiveBYOCClientUpdatesClient struct {
+	grpc.ClientStream
+}
+
+func (x *messageDispatchServiceReceiveBYOCClientUpdatesClient) Send(m *BYOCClientUpdateData) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *messageDispatchServiceReceiveBYOCClientUpdatesClient) CloseAndRecv() (*Empty, error) {
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	m := new(Empty)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 func (c *messageDispatchServiceClient) GetAccessToken(ctx context.Context, in *GetClusterTokenIn, opts ...grpc.CallOption) (*GetClusterTokenOut, error) {
 	out := new(GetClusterTokenOut)
 	err := c.cc.Invoke(ctx, "/MessageDispatchService/GetAccessToken", in, out, opts...)
@@ -188,6 +223,7 @@ type MessageDispatchServiceServer interface {
 	ReceiveErrors(MessageDispatchService_ReceiveErrorsServer) error
 	ReceiveStatusMessages(MessageDispatchService_ReceiveStatusMessagesServer) error
 	ReceiveInfraUpdates(MessageDispatchService_ReceiveInfraUpdatesServer) error
+	ReceiveBYOCClientUpdates(MessageDispatchService_ReceiveBYOCClientUpdatesServer) error
 	GetAccessToken(context.Context, *GetClusterTokenIn) (*GetClusterTokenOut, error)
 	mustEmbedUnimplementedMessageDispatchServiceServer()
 }
@@ -207,6 +243,9 @@ func (UnimplementedMessageDispatchServiceServer) ReceiveStatusMessages(MessageDi
 }
 func (UnimplementedMessageDispatchServiceServer) ReceiveInfraUpdates(MessageDispatchService_ReceiveInfraUpdatesServer) error {
 	return status.Errorf(codes.Unimplemented, "method ReceiveInfraUpdates not implemented")
+}
+func (UnimplementedMessageDispatchServiceServer) ReceiveBYOCClientUpdates(MessageDispatchService_ReceiveBYOCClientUpdatesServer) error {
+	return status.Errorf(codes.Unimplemented, "method ReceiveBYOCClientUpdates not implemented")
 }
 func (UnimplementedMessageDispatchServiceServer) GetAccessToken(context.Context, *GetClusterTokenIn) (*GetClusterTokenOut, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetAccessToken not implemented")
@@ -324,6 +363,32 @@ func (x *messageDispatchServiceReceiveInfraUpdatesServer) Recv() (*InfraStatusDa
 	return m, nil
 }
 
+func _MessageDispatchService_ReceiveBYOCClientUpdates_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(MessageDispatchServiceServer).ReceiveBYOCClientUpdates(&messageDispatchServiceReceiveBYOCClientUpdatesServer{stream})
+}
+
+type MessageDispatchService_ReceiveBYOCClientUpdatesServer interface {
+	SendAndClose(*Empty) error
+	Recv() (*BYOCClientUpdateData, error)
+	grpc.ServerStream
+}
+
+type messageDispatchServiceReceiveBYOCClientUpdatesServer struct {
+	grpc.ServerStream
+}
+
+func (x *messageDispatchServiceReceiveBYOCClientUpdatesServer) SendAndClose(m *Empty) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *messageDispatchServiceReceiveBYOCClientUpdatesServer) Recv() (*BYOCClientUpdateData, error) {
+	m := new(BYOCClientUpdateData)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 func _MessageDispatchService_GetAccessToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetClusterTokenIn)
 	if err := dec(in); err != nil {
@@ -373,6 +438,11 @@ var MessageDispatchService_ServiceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "ReceiveInfraUpdates",
 			Handler:       _MessageDispatchService_ReceiveInfraUpdates_Handler,
+			ClientStreams: true,
+		},
+		{
+			StreamName:    "ReceiveBYOCClientUpdates",
+			Handler:       _MessageDispatchService_ReceiveBYOCClientUpdates_Handler,
 			ClientStreams: true,
 		},
 	},

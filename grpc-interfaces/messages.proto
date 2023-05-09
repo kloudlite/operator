@@ -6,6 +6,7 @@ service MessageDispatchService {
   rpc ReceiveErrors(stream ErrorData) returns (Empty) {}
   rpc ReceiveStatusMessages (stream StatusData) returns (Empty) {}
   rpc ReceiveInfraUpdates (stream InfraStatusData) returns (Empty) {}
+  rpc ReceiveBYOCClientUpdates (stream BYOCClientUpdateData) returns (Empty) {}
   rpc GetAccessToken(GetClusterTokenIn) returns (GetClusterTokenOut) {}
 }
 
@@ -46,6 +47,13 @@ message InfraStatusData {
   string clusterName = 2;
   string accountName = 3;
   bytes infraUpdateMessage = 4;
+}
+
+message BYOCClientUpdateData {
+  string accessToken = 1;
+  string clusterName = 2;
+  string accountName = 3;
+  bytes byocClientUpdateMessage = 4;
 }
 
 message Empty {}
