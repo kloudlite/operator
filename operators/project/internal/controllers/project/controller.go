@@ -42,7 +42,6 @@ const (
 	HarborAccessAvailable string = "harbor-creds-available"
 	NamespacedRBACsReady  string = "namespaced-rbacs-ready"
 	NamespaceExists       string = "namespace-exists"
-	DefaultsPatched       string = "defaults-patched"
 )
 
 // +kubebuilder:rbac:groups=crds.kloudlite.io,resources=projects,verbs=get;list;watch;create;update;patch;delete
@@ -178,69 +177,6 @@ func (r *Reconciler) ensureNamespacedRBACs(req *rApi.Request[*v1.Project]) stepR
 
 	return req.Next()
 }
-
-// func (r *Reconciler) reconHarborAccess(req *rApi.Request[*v1.Project]) stepResult.Result {
-// 	ctx, obj := req.Context(), req.Object
-// 	check := rApi.Check{Generation: obj.Generation}
-//
-// 	req.LogPreCheck(HarborAccessAvailable)
-// 	defer req.LogPostCheck(HarborAccessAvailable)
-//
-// 	harborProject := &artifactsv1.HarborProject{
-// 		ObjectMeta: metav1.ObjectMeta{Name: obj.Spec.AccountName},
-// 	}
-//
-// 	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, harborProject, func() error {
-// 		return nil
-// 	}); err != nil {
-// 		return req.CheckFailed(HarborAccessAvailable, check, err.Error()).Err(nil)
-// 	}
-//
-// 	harborUserAcc := &artifactsv1.HarborUserAccount{
-// 		ObjectMeta: metav1.ObjectMeta{
-// 			Name:      r.Env.DockerSecretName,
-// 			Namespace: obj.Spec.TargetNamespace,
-// 		},
-// 	}
-// 	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, harborUserAcc, func() error {
-// 		if !fn.IsOwner(harborUserAcc, fn.AsOwner(obj)) {
-// 			harborUserAcc.SetOwnerReferences([]metav1.OwnerReference{fn.AsOwner(obj, true)})
-// 		}
-// 		harborUserAcc.Spec.AccountName = obj.Spec.AccountName
-// 		harborUserAcc.Spec.HarborProjectName = harborProject.Name
-//
-// 		if harborUserAcc.Spec.TargetSecret == "" {
-// 			harborUserAcc.Spec.TargetSecret = r.Env.DockerSecretName
-// 		}
-// 		return nil
-// 	}); err != nil {
-// 		return req.CheckFailed(HarborAccessAvailable, check, err.Error()).Err(nil)
-// 	}
-//
-// 	if !harborProject.Status.IsReady {
-// 		bMessage, err := json.Marshal(harborProject.Status.Message)
-// 		if err != nil {
-// 			return req.CheckFailed(HarborAccessAvailable, check, err.Error()).Err(nil)
-// 		}
-// 		return req.CheckFailed(HarborAccessAvailable, check, string(bMessage)).Err(nil)
-// 	}
-//
-// 	if !harborUserAcc.Status.IsReady {
-// 		bMessage, err := json.Marshal(harborUserAcc.Status.Message)
-// 		if err != nil {
-// 			return req.CheckFailed(HarborAccessAvailable, check, err.Error()).Err(nil)
-// 		}
-// 		return req.CheckFailed(HarborAccessAvailable, check, string(bMessage)).Err(nil)
-// 	}
-//
-// 	check.Status = true
-// 	if check != obj.Status.Checks[HarborAccessAvailable] {
-// 		obj.Status.Checks[HarborAccessAvailable] = check
-// 		req.UpdateStatus()
-// 	}
-//
-// 	return req.Next()
-// }
 
 func (r *Reconciler) SetupWithManager(mgr ctrl.Manager, logger logging.Logger) error {
 	r.Client = mgr.GetClient()

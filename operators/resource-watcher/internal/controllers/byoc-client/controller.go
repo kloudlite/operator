@@ -1,4 +1,4 @@
-package byoc_client_watcher
+package byoc_client
 
 import (
 	"context"
@@ -6,7 +6,6 @@ import (
 	"reflect"
 	"time"
 
-	"google.golang.org/grpc"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -21,8 +20,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	clusterv1 "github.com/kloudlite/operator/apis/clusters/v1"
-	"github.com/kloudlite/operator/operators/status-n-billing/internal/env"
-	"github.com/kloudlite/operator/operators/status-n-billing/types"
+	"github.com/kloudlite/operator/operators/resource-watcher/internal/env"
 	"github.com/kloudlite/operator/pkg/logging"
 	rApi "github.com/kloudlite/operator/pkg/operator"
 	stepResult "github.com/kloudlite/operator/pkg/operator/step-result"
@@ -30,12 +28,10 @@ import (
 
 type Reconciler struct {
 	client.Client
-	Scheme                    *runtime.Scheme
-	Logger                    logging.Logger
-	Name                      string
-	Env                       *env.Env
-	GetGrpcConnection         func() (*grpc.ClientConn, error)
-	dispatchBYOCClientUpdates func(ctx context.Context, stu types.StatusUpdate) error
+	Scheme *runtime.Scheme
+	Logger logging.Logger
+	Name   string
+	Env    *env.Env
 }
 
 func (r *Reconciler) GetName() string {
@@ -43,16 +39,15 @@ func (r *Reconciler) GetName() string {
 }
 
 const (
-	DefaultsPatched          string = "defaults-patched"
-	KafkaTopicExists         string = "kafka-topic-exists"
-	HarborProjectExists      string = "harbor-project-exists"
 	StorageClassProcessed    string = "storage-class-processed"
 	IngressClassProcessed    string = "ingress-class-processed"
 	NodesProcessed           string = "nodes-processed"
 	HelmDeploymentsProcessed string = "helm-deployments-processed"
 )
 
-const byocClientFinalizer = "kloudlite.io/byoc-client-finalizer"
+const (
+	DefaultStorageClassAnnotation = "storageclass.kubernetes.io/is-default-class"
+)
 
 // +kubebuilder:rbac:groups=crds.kloudlite.io,resources=apps,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=crds.kloudlite.io,resources=apps/status,verbs=get;update;patch
@@ -105,7 +100,7 @@ func (r *Reconciler) processStorageClasses(req *rApi.Request[*clusterv1.BYOC]) s
 	results := make([]string, len(scl.Items))
 	for i := range scl.Items {
 		results[i] = scl.Items[i].Name
-		if scl.Items[i].Annotations["storageclass.kubernetes.io/is-default-class"] == "true" {
+		if scl.Items[i].Annotations[DefaultStorageClassAnnotation] == "true" {
 			results[0], results[i] = results[i], results[0]
 		}
 	}
@@ -251,43 +246,6 @@ func (r *Reconciler) processHelmDeployments(req *rApi.Request[*clusterv1.BYOC]) 
 	return req.Next()
 }
 
-// func (r *Reconciler) sendStatusUpdate(ctx context.Context, obj *clusterv1.BYOC) (ctrl.Result, error) {
-// 	obj.SetManagedFields(nil)
-// 	b, err := json.Marshal(obj)
-// 	if err != nil {
-// 		return ctrl.Result{}, err
-// 	}
-//
-// 	var m map[string]any
-// 	if err := json.Unmarshal(b, &m); err != nil {
-// 		return ctrl.Result{}, err
-// 	}
-//
-// 	if err := r.dispatchBYOCClientUpdates(ctx, types.StatusUpdate{
-// 		ClusterName: obj.Name,
-// 		AccountName: obj.Spec.AccountName,
-// 		Object:      m,
-// 	}); err != nil {
-// 		return ctrl.Result{}, err
-// 	}
-//
-// 	r.Logger.WithKV("timestamp", time.Now()).Infof("dispatched update to message office api")
-//
-// 	if obj.GetDeletionTimestamp() != nil {
-// 		if controllerutil.ContainsFinalizer(obj, byocClientFinalizer) {
-// 			controllerutil.RemoveFinalizer(obj, byocClientFinalizer)
-// 			return ctrl.Result{}, r.Update(ctx, obj)
-// 		}
-// 		return ctrl.Result{}, nil
-// 	}
-//
-// 	if !controllerutil.ContainsFinalizer(obj, byocClientFinalizer) {
-// 		controllerutil.AddFinalizer(obj, byocClientFinalizer)
-// 		return ctrl.Result{}, r.Update(ctx, obj)
-// 	}
-// 	return ctrl.Result{}, nil
-// }
-
 func (r *Reconciler) finalize(req *rApi.Request[*clusterv1.BYOC]) stepResult.Result {
 	return nil
 }
@@ -296,58 +254,6 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager, logger logging.Logger) e
 	r.Client = mgr.GetClient()
 	r.Scheme = mgr.GetScheme()
 	r.Logger = logger.WithName(r.Name)
-
-	// r.dispatchBYOCClientUpdates = func(ctx context.Context, stu types.StatusUpdate) error {
-	// 	return fmt.Errorf("grpc connection not established yet")
-	// }
-
-	// go func() {
-	// 	handlerCh := make(chan error, 1)
-	// 	for {
-	// 		logger.Infof("Waiting for grpc connection to setup")
-	// 		cc, err := r.GetGrpcConnection()
-	// 		if err != nil {
-	// 			log.Fatalf("Failed to connect after retries: %v", err)
-	// 		}
-	//
-	// 		logger.Infof("GRPC connection successful")
-	//
-	// 		msgDispatchCli := messages.NewMessageDispatchServiceClient(cc)
-	//
-	// 		mds, err := msgDispatchCli.ReceiveBYOCClientUpdates(context.Background())
-	// 		// mds, err := msgDispatchCli.ReceiveStatusMessages(context.Background())
-	// 		if err != nil {
-	// 			logger.Errorf(err, "ReceiveBYOCClientUpdates")
-	// 		}
-	//
-	// 		r.dispatchBYOCClientUpdates = func(_ context.Context, stu types.StatusUpdate) error {
-	// 			b, err := json.Marshal(stu)
-	// 			if err != nil {
-	// 				return err
-	// 			}
-	//
-	// 			if err = mds.Send(&messages.BYOCClientUpdateData{
-	// 				AccessToken:             r.Env.AccessToken,
-	// 				ClusterName:             r.Env.ClusterName,
-	// 				AccountName:             r.Env.AccountName,
-	// 				ByocClientUpdateMessage: b,
-	// 			}); err != nil {
-	// 				handlerCh <- err
-	// 				return err
-	// 			}
-	// 			return nil
-	// 		}
-	//
-	// 		connState := cc.GetState()
-	// 		go func(cs connectivity.State) {
-	// 			for cs != connectivity.Ready && connState != connectivity.Shutdown {
-	// 				handlerCh <- fmt.Errorf("connection lost, will reconnect")
-	// 			}
-	// 		}(connState)
-	// 		<-handlerCh
-	// 		cc.Close()
-	// 	}
-	// }()
 
 	builder := ctrl.NewControllerManagedBy(mgr).For(&clusterv1.BYOC{})
 	watchList := []client.Object{

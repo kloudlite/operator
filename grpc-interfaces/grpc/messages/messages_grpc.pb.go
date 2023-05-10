@@ -24,7 +24,7 @@ const _ = grpc.SupportPackageIsVersion7
 type MessageDispatchServiceClient interface {
 	SendActions(ctx context.Context, in *StreamActionsRequest, opts ...grpc.CallOption) (MessageDispatchService_SendActionsClient, error)
 	ReceiveErrors(ctx context.Context, opts ...grpc.CallOption) (MessageDispatchService_ReceiveErrorsClient, error)
-	ReceiveStatusMessages(ctx context.Context, opts ...grpc.CallOption) (MessageDispatchService_ReceiveStatusMessagesClient, error)
+	ReceiveResourceUpdates(ctx context.Context, opts ...grpc.CallOption) (MessageDispatchService_ReceiveResourceUpdatesClient, error)
 	ReceiveInfraUpdates(ctx context.Context, opts ...grpc.CallOption) (MessageDispatchService_ReceiveInfraUpdatesClient, error)
 	ReceiveBYOCClientUpdates(ctx context.Context, opts ...grpc.CallOption) (MessageDispatchService_ReceiveBYOCClientUpdatesClient, error)
 	GetAccessToken(ctx context.Context, in *GetClusterTokenIn, opts ...grpc.CallOption) (*GetClusterTokenOut, error)
@@ -104,30 +104,30 @@ func (x *messageDispatchServiceReceiveErrorsClient) CloseAndRecv() (*Empty, erro
 	return m, nil
 }
 
-func (c *messageDispatchServiceClient) ReceiveStatusMessages(ctx context.Context, opts ...grpc.CallOption) (MessageDispatchService_ReceiveStatusMessagesClient, error) {
-	stream, err := c.cc.NewStream(ctx, &MessageDispatchService_ServiceDesc.Streams[2], "/MessageDispatchService/ReceiveStatusMessages", opts...)
+func (c *messageDispatchServiceClient) ReceiveResourceUpdates(ctx context.Context, opts ...grpc.CallOption) (MessageDispatchService_ReceiveResourceUpdatesClient, error) {
+	stream, err := c.cc.NewStream(ctx, &MessageDispatchService_ServiceDesc.Streams[2], "/MessageDispatchService/ReceiveResourceUpdates", opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &messageDispatchServiceReceiveStatusMessagesClient{stream}
+	x := &messageDispatchServiceReceiveResourceUpdatesClient{stream}
 	return x, nil
 }
 
-type MessageDispatchService_ReceiveStatusMessagesClient interface {
-	Send(*StatusData) error
+type MessageDispatchService_ReceiveResourceUpdatesClient interface {
+	Send(*ResourceUpdate) error
 	CloseAndRecv() (*Empty, error)
 	grpc.ClientStream
 }
 
-type messageDispatchServiceReceiveStatusMessagesClient struct {
+type messageDispatchServiceReceiveResourceUpdatesClient struct {
 	grpc.ClientStream
 }
 
-func (x *messageDispatchServiceReceiveStatusMessagesClient) Send(m *StatusData) error {
+func (x *messageDispatchServiceReceiveResourceUpdatesClient) Send(m *ResourceUpdate) error {
 	return x.ClientStream.SendMsg(m)
 }
 
-func (x *messageDispatchServiceReceiveStatusMessagesClient) CloseAndRecv() (*Empty, error) {
+func (x *messageDispatchServiceReceiveResourceUpdatesClient) CloseAndRecv() (*Empty, error) {
 	if err := x.ClientStream.CloseSend(); err != nil {
 		return nil, err
 	}
@@ -148,7 +148,7 @@ func (c *messageDispatchServiceClient) ReceiveInfraUpdates(ctx context.Context, 
 }
 
 type MessageDispatchService_ReceiveInfraUpdatesClient interface {
-	Send(*InfraStatusData) error
+	Send(*InfraUpdate) error
 	CloseAndRecv() (*Empty, error)
 	grpc.ClientStream
 }
@@ -157,7 +157,7 @@ type messageDispatchServiceReceiveInfraUpdatesClient struct {
 	grpc.ClientStream
 }
 
-func (x *messageDispatchServiceReceiveInfraUpdatesClient) Send(m *InfraStatusData) error {
+func (x *messageDispatchServiceReceiveInfraUpdatesClient) Send(m *InfraUpdate) error {
 	return x.ClientStream.SendMsg(m)
 }
 
@@ -182,7 +182,7 @@ func (c *messageDispatchServiceClient) ReceiveBYOCClientUpdates(ctx context.Cont
 }
 
 type MessageDispatchService_ReceiveBYOCClientUpdatesClient interface {
-	Send(*BYOCClientUpdateData) error
+	Send(*BYOCClientUpdate) error
 	CloseAndRecv() (*Empty, error)
 	grpc.ClientStream
 }
@@ -191,7 +191,7 @@ type messageDispatchServiceReceiveBYOCClientUpdatesClient struct {
 	grpc.ClientStream
 }
 
-func (x *messageDispatchServiceReceiveBYOCClientUpdatesClient) Send(m *BYOCClientUpdateData) error {
+func (x *messageDispatchServiceReceiveBYOCClientUpdatesClient) Send(m *BYOCClientUpdate) error {
 	return x.ClientStream.SendMsg(m)
 }
 
@@ -221,7 +221,7 @@ func (c *messageDispatchServiceClient) GetAccessToken(ctx context.Context, in *G
 type MessageDispatchServiceServer interface {
 	SendActions(*StreamActionsRequest, MessageDispatchService_SendActionsServer) error
 	ReceiveErrors(MessageDispatchService_ReceiveErrorsServer) error
-	ReceiveStatusMessages(MessageDispatchService_ReceiveStatusMessagesServer) error
+	ReceiveResourceUpdates(MessageDispatchService_ReceiveResourceUpdatesServer) error
 	ReceiveInfraUpdates(MessageDispatchService_ReceiveInfraUpdatesServer) error
 	ReceiveBYOCClientUpdates(MessageDispatchService_ReceiveBYOCClientUpdatesServer) error
 	GetAccessToken(context.Context, *GetClusterTokenIn) (*GetClusterTokenOut, error)
@@ -238,8 +238,8 @@ func (UnimplementedMessageDispatchServiceServer) SendActions(*StreamActionsReque
 func (UnimplementedMessageDispatchServiceServer) ReceiveErrors(MessageDispatchService_ReceiveErrorsServer) error {
 	return status.Errorf(codes.Unimplemented, "method ReceiveErrors not implemented")
 }
-func (UnimplementedMessageDispatchServiceServer) ReceiveStatusMessages(MessageDispatchService_ReceiveStatusMessagesServer) error {
-	return status.Errorf(codes.Unimplemented, "method ReceiveStatusMessages not implemented")
+func (UnimplementedMessageDispatchServiceServer) ReceiveResourceUpdates(MessageDispatchService_ReceiveResourceUpdatesServer) error {
+	return status.Errorf(codes.Unimplemented, "method ReceiveResourceUpdates not implemented")
 }
 func (UnimplementedMessageDispatchServiceServer) ReceiveInfraUpdates(MessageDispatchService_ReceiveInfraUpdatesServer) error {
 	return status.Errorf(codes.Unimplemented, "method ReceiveInfraUpdates not implemented")
@@ -311,26 +311,26 @@ func (x *messageDispatchServiceReceiveErrorsServer) Recv() (*ErrorData, error) {
 	return m, nil
 }
 
-func _MessageDispatchService_ReceiveStatusMessages_Handler(srv interface{}, stream grpc.ServerStream) error {
-	return srv.(MessageDispatchServiceServer).ReceiveStatusMessages(&messageDispatchServiceReceiveStatusMessagesServer{stream})
+func _MessageDispatchService_ReceiveResourceUpdates_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(MessageDispatchServiceServer).ReceiveResourceUpdates(&messageDispatchServiceReceiveResourceUpdatesServer{stream})
 }
 
-type MessageDispatchService_ReceiveStatusMessagesServer interface {
+type MessageDispatchService_ReceiveResourceUpdatesServer interface {
 	SendAndClose(*Empty) error
-	Recv() (*StatusData, error)
+	Recv() (*ResourceUpdate, error)
 	grpc.ServerStream
 }
 
-type messageDispatchServiceReceiveStatusMessagesServer struct {
+type messageDispatchServiceReceiveResourceUpdatesServer struct {
 	grpc.ServerStream
 }
 
-func (x *messageDispatchServiceReceiveStatusMessagesServer) SendAndClose(m *Empty) error {
+func (x *messageDispatchServiceReceiveResourceUpdatesServer) SendAndClose(m *Empty) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func (x *messageDispatchServiceReceiveStatusMessagesServer) Recv() (*StatusData, error) {
-	m := new(StatusData)
+func (x *messageDispatchServiceReceiveResourceUpdatesServer) Recv() (*ResourceUpdate, error) {
+	m := new(ResourceUpdate)
 	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -343,7 +343,7 @@ func _MessageDispatchService_ReceiveInfraUpdates_Handler(srv interface{}, stream
 
 type MessageDispatchService_ReceiveInfraUpdatesServer interface {
 	SendAndClose(*Empty) error
-	Recv() (*InfraStatusData, error)
+	Recv() (*InfraUpdate, error)
 	grpc.ServerStream
 }
 
@@ -355,8 +355,8 @@ func (x *messageDispatchServiceReceiveInfraUpdatesServer) SendAndClose(m *Empty)
 	return x.ServerStream.SendMsg(m)
 }
 
-func (x *messageDispatchServiceReceiveInfraUpdatesServer) Recv() (*InfraStatusData, error) {
-	m := new(InfraStatusData)
+func (x *messageDispatchServiceReceiveInfraUpdatesServer) Recv() (*InfraUpdate, error) {
+	m := new(InfraUpdate)
 	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -369,7 +369,7 @@ func _MessageDispatchService_ReceiveBYOCClientUpdates_Handler(srv interface{}, s
 
 type MessageDispatchService_ReceiveBYOCClientUpdatesServer interface {
 	SendAndClose(*Empty) error
-	Recv() (*BYOCClientUpdateData, error)
+	Recv() (*BYOCClientUpdate, error)
 	grpc.ServerStream
 }
 
@@ -381,8 +381,8 @@ func (x *messageDispatchServiceReceiveBYOCClientUpdatesServer) SendAndClose(m *E
 	return x.ServerStream.SendMsg(m)
 }
 
-func (x *messageDispatchServiceReceiveBYOCClientUpdatesServer) Recv() (*BYOCClientUpdateData, error) {
-	m := new(BYOCClientUpdateData)
+func (x *messageDispatchServiceReceiveBYOCClientUpdatesServer) Recv() (*BYOCClientUpdate, error) {
+	m := new(BYOCClientUpdate)
 	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -431,8 +431,8 @@ var MessageDispatchService_ServiceDesc = grpc.ServiceDesc{
 			ClientStreams: true,
 		},
 		{
-			StreamName:    "ReceiveStatusMessages",
-			Handler:       _MessageDispatchService_ReceiveStatusMessages_Handler,
+			StreamName:    "ReceiveResourceUpdates",
+			Handler:       _MessageDispatchService_ReceiveResourceUpdates_Handler,
 			ClientStreams: true,
 		},
 		{
