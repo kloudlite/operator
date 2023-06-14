@@ -2,7 +2,6 @@ package node
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -13,7 +12,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/yaml"
 
 	clustersv1 "github.com/kloudlite/operator/apis/clusters/v1"
 	"github.com/kloudlite/operator/operators/clusters/internal/env"
@@ -45,7 +43,7 @@ func (r *Reconciler) GetName() string {
 }
 
 const (
-	K8sSecretCreated string = "k8s-secret-created"
+	K8sNodeCreated string = "k8s-node-created"
 )
 
 // +kubebuilder:rbac:groups=clusters.kloudlite.io,resources=nodes,verbs=get;list;watch;create;update;patch;delete
@@ -76,7 +74,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.
 		return step.ReconcilerResponse()
 	}
 
-	if step := req.EnsureChecks(K8sSecretCreated); !step.ShouldProceed() {
+	if step := req.EnsureChecks(K8sNodeCreated); !step.ShouldProceed() {
 		return step.ReconcilerResponse()
 	}
 
@@ -113,38 +111,7 @@ func (r *Reconciler) finalize(req *rApi.Request[*clustersv1.Node]) stepResult.Re
 		return failed(err)
 	}
 
-	getNodeConfig := func() ([]byte, error) {
-		switch r.Env.CloudProvider {
-		case "aws":
-			var awsNode AWSNode
-			if err := json.Unmarshal([]byte(np.Spec.NodeConfig), &awsNode); err != nil {
-				return nil, err
-			}
-
-			awsbyte, err := yaml.Marshal(awsNode)
-			if err != nil {
-				return nil, err
-			}
-			return awsbyte, nil
-
-		case "do", "azure", "gcp":
-			panic("unimplemented")
-		default:
-			return nil, fmt.Errorf("this type of cloud provider not supported for now")
-		}
-	}
-
-	getProviderConfig := func() ([]byte, error) {
-		pd := CommonProviderData{
-			TfTemplates: tfTemplates,
-			Labels:      map[string]string{},
-			Taints:      []string{},
-			SSHPath:     "",
-		}
-		return yaml.Marshal(pd)
-	}
-
-	nodeConfig, err := getNodeConfig()
+	nodeConfig, err := r.getNodeConfig(np, obj)
 	if err != nil {
 		return failed(err)
 	}
@@ -154,31 +121,9 @@ func (r *Reconciler) finalize(req *rApi.Request[*clustersv1.Node]) stepResult.Re
 		return failed(err)
 	}
 
-	getAction := func() string {
-		switch obj.Spec.NodeType {
-		case "worker", "master", "cluster":
-			return "delete"
-		default:
-			return "unknown"
-		}
-	}
+	action := getAction(obj)
 
-	action := getAction()
-
-	getSpecificProvierConfig := func() ([]byte, error) {
-		switch r.Env.CloudProvider {
-		case "aws":
-			return json.Marshal(AwsProviderConfig{
-				AccessKey:    r.Env.AccessKey,
-				AccessSecret: r.Env.AccessSecret,
-				AccountName:  r.Env.AccountName,
-			})
-		default:
-			return nil, fmt.Errorf("cloud provider %s not supported for now", r.Env.CloudProvider)
-		}
-	}
-
-	sProvider, err := getSpecificProvierConfig()
+	sProvider, err := r.getSpecificProvierConfig()
 	if err != nil {
 		return failed(err)
 	}
@@ -188,7 +133,7 @@ func (r *Reconciler) finalize(req *rApi.Request[*clustersv1.Node]) stepResult.Re
 			map[string]any{
 				"name":      fmt.Sprintf("delete-%s", obj.Name),
 				"namespace": r.Env.JobNamespace,
-				"ownerRefs": functions.AsOwner(obj),
+				"ownerRefs": []metav1.OwnerReference{functions.AsOwner(obj)},
 
 				"cloudProvider":  r.Env.CloudProvider,
 				"action":         action,
@@ -238,46 +183,15 @@ func (r *Reconciler) ensureNodeReady(req *rApi.Request[*clustersv1.Node]) stepRe
 		return req.CheckFailed("ensure-node-ready", check, err.Error())
 	}
 
-	req.LogPreCheck(K8sSecretCreated)
-	defer req.LogPostCheck(K8sSecretCreated)
+	req.LogPreCheck(K8sNodeCreated)
+	defer req.LogPostCheck(K8sNodeCreated)
 
 	np, err := rApi.Get(ctx, r.Client, functions.NN("", obj.Spec.NodePoolName), &clustersv1.NodePool{})
 	if err != nil {
 		return failed(err)
 	}
 
-	getNodeConfig := func() ([]byte, error) {
-		switch r.Env.CloudProvider {
-		case "aws":
-			var awsNode AWSNode
-			if err := json.Unmarshal([]byte(np.Spec.NodeConfig), &awsNode); err != nil {
-				return nil, err
-			}
-
-			awsbyte, err := yaml.Marshal(awsNode)
-			if err != nil {
-				return nil, err
-			}
-			return awsbyte, nil
-
-		case "do", "azure", "gcp":
-			panic("unimplemented")
-		default:
-			return nil, fmt.Errorf("this type of cloud provider not supported for now")
-		}
-	}
-
-	getProviderConfig := func() ([]byte, error) {
-		pd := CommonProviderData{
-			TfTemplates: tfTemplates,
-			Labels:      map[string]string{},
-			Taints:      []string{},
-			SSHPath:     "",
-		}
-		return yaml.Marshal(pd)
-	}
-
-	nodeConfig, err := getNodeConfig()
+	nodeConfig, err := r.getNodeConfig(np, obj)
 	if err != nil {
 		return failed(err)
 	}
@@ -287,35 +201,9 @@ func (r *Reconciler) ensureNodeReady(req *rApi.Request[*clustersv1.Node]) stepRe
 		return failed(err)
 	}
 
-	getAction := func() string {
-		switch obj.Spec.NodeType {
-		case "worker":
-			return "add-worker"
-		case "master":
-			return "add-master"
-		case "cluster":
-			return "create-cluster"
-		default:
-			return "unknown"
-		}
-	}
+	action := getAction(obj)
 
-	action := getAction()
-
-	getSpecificProvierConfig := func() ([]byte, error) {
-		switch r.Env.CloudProvider {
-		case "aws":
-			return json.Marshal(AwsProviderConfig{
-				AccessKey:    r.Env.AccessKey,
-				AccessSecret: r.Env.AccessSecret,
-				AccountName:  r.Env.AccountName,
-			})
-		default:
-			return nil, fmt.Errorf("cloud provider %s not supported for now", r.Env.CloudProvider)
-		}
-	}
-
-	sProvider, err := getSpecificProvierConfig()
+	sProvider, err := r.getSpecificProvierConfig()
 	if err != nil {
 		return failed(err)
 	}
@@ -325,17 +213,17 @@ func (r *Reconciler) ensureNodeReady(req *rApi.Request[*clustersv1.Node]) stepRe
 			map[string]any{
 				"name":      obj.Name,
 				"namespace": r.Env.JobNamespace,
-				"ownerRefs": functions.AsOwner(obj),
+				"ownerRefs": []metav1.OwnerReference{functions.AsOwner(obj)},
 
 				"cloudProvider":  r.Env.CloudProvider,
 				"action":         action,
-				"nodeConfig":     string(nodeConfig),
-				"providerConfig": string(providerConfig),
+				"nodeConfig":     nodeConfig,
+				"providerConfig": providerConfig,
 
-				"AwsProvider":   string(sProvider),
-				"AzureProvider": string(sProvider),
-				"DoProvider":    string(sProvider),
-				"GCPProvider":   string(sProvider),
+				"AwsProvider":   sProvider,
+				"AzureProvider": sProvider,
+				"DoProvider":    sProvider,
+				"GCPProvider":   sProvider,
 			},
 		)
 		if err != nil {
@@ -378,8 +266,8 @@ func (r *Reconciler) ensureNodeReady(req *rApi.Request[*clustersv1.Node]) stepRe
 	// if not attached then attach then have to attach
 
 	check.Status = true
-	if check != checks[K8sSecretCreated] {
-		checks[K8sSecretCreated] = check
+	if check != checks[K8sNodeCreated] {
+		checks[K8sNodeCreated] = check
 		req.UpdateStatus()
 	}
 	return req.Next()

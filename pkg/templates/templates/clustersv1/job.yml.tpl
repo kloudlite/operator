@@ -37,26 +37,9 @@ spec:
       #   kloudlite.io/region: kl-blr1
       containers:
 
-      - image: registry.kloudlite.io/kloudlite/development/nodecontroller:v1.0.5
+      - image: ghcr.io/kloudlite/platform/apis/nodectrl:v1.0.5-nightly
         name: nodectrl
         imagePullPolicy: Always
-        command:
-          - /bin/sh
-          - -c
-          - |+
-            trap 'touch /usr/share/pod/done' EXIT
-
-            while [ ! -f "$S3_DIR/checkpoint" ] 
-            do
-              sleep 2
-            done
-            # mkdir -p /home/nonroot/ssh
-            # cat /ssh/access.pub > /home/nonroot/ssh/access.pub
-            # cat /ssh/id_rsa > /home/nonroot/ssh/id_rsa
-            # chown -R nonroot:nonroot /home/nonroot/ssh
-            # chmod 400 /home/nonroot/ssh/id_rsa
-            # tail -f /dev/null
-            ./nodecontroller
 
         # securityContext:
         #   runAsNonRoot: true
@@ -99,8 +82,3 @@ spec:
           limits:
             cpu: 200m
             memory: 200Mi
-        securityContext:
-          capabilities:
-            add:
-            - SYS_ADMIN
-          privileged: true

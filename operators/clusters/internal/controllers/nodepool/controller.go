@@ -115,7 +115,7 @@ func (r *Reconciler) finalize(req *rApi.Request[*clustersv1.NodePool]) stepResul
 		return req.Finalize()
 	}
 
-	return nil
+	return req.Done()
 }
 
 func (r *Reconciler) ensureNodesAsPerReq(req *rApi.Request[*clustersv1.NodePool]) stepResult.Result {
@@ -157,12 +157,14 @@ func (r *Reconciler) ensureNodesAsPerReq(req *rApi.Request[*clustersv1.NodePool]
 
 	if length < obj.Spec.TargetCount {
 		for i := length + 1; i <= obj.Spec.TargetCount; i++ {
+			fmt.Println(i, obj.Spec.TargetCount, "...........running-create")
 			if err := r.Create(ctx, &clustersv1.Node{
 				ObjectMeta: metav1.ObjectMeta{
-					GenerateName: "kl-worker",
+					GenerateName: "kl-worker-",
 				},
 				Spec: clustersv1.NodeSpec{
 					NodePoolName: obj.Name,
+					NodeType:     "worker",
 				},
 			}); err != nil {
 				return failed(err)
