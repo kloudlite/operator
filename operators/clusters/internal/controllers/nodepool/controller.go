@@ -148,7 +148,7 @@ func (r *Reconciler) ensureNodesAsPerReq(req *rApi.Request[*clustersv1.NodePool]
 	rLength := 0
 
 	for _, n := range nodes.Items {
-		if n.GetDeletionTimestamp() != nil {
+		if n.GetDeletionTimestamp() == nil {
 			rLength += 1
 		}
 	}
@@ -157,7 +157,6 @@ func (r *Reconciler) ensureNodesAsPerReq(req *rApi.Request[*clustersv1.NodePool]
 
 	if length < obj.Spec.TargetCount {
 		for i := length + 1; i <= obj.Spec.TargetCount; i++ {
-			fmt.Println(i, obj.Spec.TargetCount, "...........running-create")
 			if err := r.Create(ctx, &clustersv1.Node{
 				ObjectMeta: metav1.ObjectMeta{
 					GenerateName: "kl-worker-",
@@ -170,7 +169,7 @@ func (r *Reconciler) ensureNodesAsPerReq(req *rApi.Request[*clustersv1.NodePool]
 				return failed(err)
 			}
 		}
-	} else if rLength > obj.Spec.TargetCount && length > 0 {
+	} else if (rLength > obj.Spec.TargetCount) && (length > 0) {
 		// needs to delete
 		n := ""
 		for _, n2 := range nodes.Items {

@@ -20,6 +20,8 @@ metadata:
   name: {{$name}}
   namespace: {{$namespace}}
   ownerReferences: {{$ownerRefs | toJson}}
+  labels:
+    kloudlite.io/is-nodectrl-job: "yes"
 spec:
   template:
     spec:
@@ -80,5 +82,5 @@ spec:
             cpu: 150m
             memory: 150Mi
           limits:
-            cpu: 200m
-            memory: 200Mi
+            cpu: 400m
+            memory: 400Mi
