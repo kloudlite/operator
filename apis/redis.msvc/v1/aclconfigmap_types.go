@@ -1,8 +1,8 @@
 package v1
 
 import (
-	"github.com/kloudlite/operator/apis/common-types"
 	"github.com/kloudlite/operator/pkg/constants"
+	rApi "github.com/kloudlite/operator/pkg/operator"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -24,8 +24,8 @@ type ACLConfigMap struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   ACLConfigMapSpec    `json:"spec,omitempty"`
-	Status common_types.Status `json:"status,omitempty"`
+	Spec   ACLConfigMapSpec `json:"spec,omitempty"`
+	Status rApi.Status      `json:"status,omitempty"`
 }
 
 func (a *ACLConfigMap) EnsureGVK() {
@@ -34,7 +34,7 @@ func (a *ACLConfigMap) EnsureGVK() {
 	}
 }
 
-func (cfg *ACLConfigMap) GetStatus() *common_types.Status {
+func (cfg *ACLConfigMap) GetStatus() *rApi.Status {
 	return &cfg.Status
 }
 

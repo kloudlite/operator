@@ -4,6 +4,7 @@ import (
 	ct "github.com/kloudlite/operator/apis/common-types"
 	"github.com/kloudlite/operator/pkg/constants"
 	"github.com/kloudlite/operator/pkg/influx"
+	rApi "github.com/kloudlite/operator/pkg/operator"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -22,8 +23,8 @@ type Bucket struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   BucketSpec `json:"spec,omitempty"`
-	Status ct.Status  `json:"status,omitempty"`
+	Spec   BucketSpec  `json:"spec,omitempty"`
+	Status rApi.Status `json:"status,omitempty"`
 }
 
 func (b *Bucket) EnsureGVK() {
@@ -32,7 +33,7 @@ func (b *Bucket) EnsureGVK() {
 	}
 }
 
-func (b *Bucket) GetStatus() *ct.Status {
+func (b *Bucket) GetStatus() *rApi.Status {
 	return &b.Status
 }
 

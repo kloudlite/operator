@@ -4,13 +4,13 @@ import (
 	"bytes"
 	"embed"
 	"fmt"
-	"github.com/kloudlite/operator/pkg/errors"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
 	"text/template"
 
+	"github.com/kloudlite/operator/pkg/errors"
 	"github.com/kloudlite/operator/pkg/templates"
 	"github.com/urfave/cli/v2"
 )

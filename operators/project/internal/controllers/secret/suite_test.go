@@ -1,12 +1,13 @@
 package secret
 
 import (
-	"github.com/kloudlite/operator/logging"
 	"testing"
 	"time"
 
-	crdsv1 "github.com/kloudlite/operator/apis/crds/v1"
 	"github.com/kloudlite/operator/operators/project/internal/env"
+	"github.com/kloudlite/operator/pkg/logging"
+
+	crdsv1 "github.com/kloudlite/operator/apis/crds/v1"
 	. "github.com/kloudlite/operator/testing"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"

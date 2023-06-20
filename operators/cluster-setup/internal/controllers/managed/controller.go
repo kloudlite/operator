@@ -4,9 +4,6 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"github.com/kloudlite/operator/apis/common-types"
-	"github.com/kloudlite/operator/logging"
-	"github.com/kloudlite/operator/pkg/errors"
 	"io"
 	"net/http"
 	"path/filepath"
@@ -18,6 +15,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/kloudlite/operator/pkg/constants"
+	"github.com/kloudlite/operator/pkg/errors"
 	"github.com/kloudlite/operator/pkg/helm"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -28,6 +26,7 @@ import (
 	"github.com/kloudlite/operator/operators/cluster-setup/internal/templates"
 	fn "github.com/kloudlite/operator/pkg/functions"
 	"github.com/kloudlite/operator/pkg/kubectl"
+	"github.com/kloudlite/operator/pkg/logging"
 	rApi "github.com/kloudlite/operator/pkg/operator"
 	stepResult "github.com/kloudlite/operator/pkg/operator/step-result"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -74,7 +73,7 @@ const (
 	CertManagerInstalled       string = "cert-manager-installed"
 	AppOperatorInstalled       string = "app-operator-installed"
 	MsvcNMresOperatorInstalled string = "msvc-n-mres-operator-installed"
-	RedisOperatorInstalled     string = "redis-operator-installed"
+	RedisOperatorInstalled      string = "redis-operator-installed"
 )
 
 func (r *Reconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, error) {
@@ -172,7 +171,7 @@ func (r *Reconciler) finalize(req *rApi.Request[*v1.ManagedCluster]) stepResult.
 
 func (r *Reconciler) checkKloudliteCreds(req *rApi.Request[*v1.ManagedCluster]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
-	check := common_types.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(KloudliteCredsValidated)
 	defer req.LogPostCheck(KloudliteCredsValidated)
@@ -202,7 +201,7 @@ func (r *Reconciler) checkKloudliteCreds(req *rApi.Request[*v1.ManagedCluster]) 
 
 func (r *Reconciler) patchDefaults(req *rApi.Request[*v1.ManagedCluster]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
-	check := common_types.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(DefaultsPatched)
 	defer req.LogPostCheck(DefaultsPatched)
@@ -233,7 +232,7 @@ func (r *Reconciler) patchDefaults(req *rApi.Request[*v1.ManagedCluster]) stepRe
 
 func (r *Reconciler) ensureWgOperator(req *rApi.Request[*v1.ManagedCluster]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
-	check := common_types.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(WgOperatorReady)
 	defer req.LogPostCheck(WgOperatorReady)
@@ -287,7 +286,7 @@ func (r *Reconciler) ensureWgOperator(req *rApi.Request[*v1.ManagedCluster]) ste
 
 func (r *Reconciler) ensureUserKubeConfig(req *rApi.Request[*v1.ManagedCluster]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
-	check := common_types.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	svcAccountName := obj.Name + "-admin"
 	svcAccountNs := "kube-system"
@@ -349,7 +348,7 @@ func (r *Reconciler) ensureUserKubeConfig(req *rApi.Request[*v1.ManagedCluster])
 
 func (r *Reconciler) ensureCsiDriversOperator(req *rApi.Request[*v1.ManagedCluster]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
-	check := common_types.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(CsiOperatorReady)
 	defer req.LogPostCheck(CsiOperatorReady)
@@ -380,7 +379,7 @@ func (r *Reconciler) ensureCsiDriversOperator(req *rApi.Request[*v1.ManagedClust
 
 func (r *Reconciler) ensureRoutersOperator(req *rApi.Request[*v1.ManagedCluster]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
-	check := common_types.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(RoutersOperatorReady)
 	defer req.LogPostCheck(RoutersOperatorReady)
@@ -424,7 +423,7 @@ func (r *Reconciler) ensureRoutersOperator(req *rApi.Request[*v1.ManagedCluster]
 
 func (r *Reconciler) ensureAppOperator(req *rApi.Request[*v1.ManagedCluster]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
-	check := common_types.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(AppOperatorInstalled)
 	defer req.LogPostCheck(AppOperatorInstalled)
@@ -456,7 +455,7 @@ func (r *Reconciler) ensureAppOperator(req *rApi.Request[*v1.ManagedCluster]) st
 
 func (r *Reconciler) ensureMsvcNMresOperator(req *rApi.Request[*v1.ManagedCluster]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
-	check := common_types.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(MsvcNMresOperatorInstalled)
 	defer req.LogPostCheck(MsvcNMresOperatorInstalled)
@@ -487,10 +486,10 @@ func (r *Reconciler) ensureMsvcNMresOperator(req *rApi.Request[*v1.ManagedCluste
 }
 func (r *Reconciler) ensureMsvcRedisOperator(req *rApi.Request[*v1.ManagedCluster]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
-	check := common_types.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
-	req.LogPreCheck(RedisOperatorInstalled)
-	defer req.LogPostCheck(RedisOperatorInstalled)
+	req.LogPreCheck(RedisOperatorInstalled) 
+	defer req.LogPostCheck(RedisOperatorInstalled) 
 
 	b, err := templates.ParseBytes(r.TemplateMsvcRedisOperator, map[string]any{
 		"Namespace":       obj.Spec.KlOperators.Namespace,
@@ -519,7 +518,7 @@ func (r *Reconciler) ensureMsvcRedisOperator(req *rApi.Request[*v1.ManagedCluste
 
 func (r *Reconciler) ensureGitlabRunner(req *rApi.Request[*v1.ManagedCluster]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
-	check := common_types.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	if obj.Spec.GitlabRunner == nil || !obj.Spec.GitlabRunner.Enabled {
 		req.Logger.Infof("skipping gitlab runner reconcilation")
@@ -566,7 +565,7 @@ func (r *Reconciler) ensureGitlabRunner(req *rApi.Request[*v1.ManagedCluster]) s
 
 func (r *Reconciler) ensureCertManager(req *rApi.Request[*v1.ManagedCluster]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
-	check := common_types.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(CertManagerInstalled)
 	defer req.LogPostCheck(CertManagerInstalled)
@@ -608,7 +607,7 @@ func (r *Reconciler) ensureCertManager(req *rApi.Request[*v1.ManagedCluster]) st
 
 func (r *Reconciler) ensureLoki(req *rApi.Request[*v1.ManagedCluster]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
-	check := common_types.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(LokiReady)
 	defer req.LogPostCheck(LokiReady)
@@ -644,7 +643,7 @@ func (r *Reconciler) ensureLoki(req *rApi.Request[*v1.ManagedCluster]) stepResul
 
 func (r *Reconciler) ensurePrometheus(req *rApi.Request[*v1.ManagedCluster]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
-	check := common_types.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	if obj.Spec.Prometheus == nil || !obj.Spec.Prometheus.Enabled {
 		req.Logger.Infof("skipping prometheus installation")

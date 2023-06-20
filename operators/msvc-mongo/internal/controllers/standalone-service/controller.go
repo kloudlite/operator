@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/kloudlite/operator/logging"
-	types2 "github.com/kloudlite/operator/pkg/errors"
 	"strings"
 	"time"
 
@@ -15,8 +13,10 @@ import (
 	"github.com/kloudlite/operator/operators/msvc-mongo/internal/types"
 	"github.com/kloudlite/operator/pkg/conditions"
 	"github.com/kloudlite/operator/pkg/constants"
+	"github.com/kloudlite/operator/pkg/errors"
 	fn "github.com/kloudlite/operator/pkg/functions"
 	"github.com/kloudlite/operator/pkg/kubectl"
+	"github.com/kloudlite/operator/pkg/logging"
 	rApi "github.com/kloudlite/operator/pkg/operator"
 	stepResult "github.com/kloudlite/operator/pkg/operator/step-result"
 	"github.com/kloudlite/operator/pkg/templates"
@@ -125,7 +125,7 @@ func (r *ServiceReconciler) finalize(req *rApi.Request[*mongodbMsvcv1.Standalone
 
 func (r *ServiceReconciler) reconAccessCreds(req *rApi.Request[*mongodbMsvcv1.StandaloneService]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := ct.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(AccessCredsReady)
 	defer req.LogPostCheck(AccessCredsReady)
@@ -197,7 +197,7 @@ func (r *ServiceReconciler) reconAccessCreds(req *rApi.Request[*mongodbMsvcv1.St
 
 func (r *ServiceReconciler) reconHelmSecret(req *rApi.Request[*mongodbMsvcv1.StandaloneService]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := ct.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(HelmSecretReady)
 	defer req.LogPostCheck(HelmSecretReady)
@@ -213,7 +213,7 @@ func (r *ServiceReconciler) reconHelmSecret(req *rApi.Request[*mongodbMsvcv1.Sta
 
 	msvcOutput, ok := rApi.GetLocal[types.MsvcOutput](req, KeyMsvcOutput)
 	if !ok {
-		return req.CheckFailed(HelmSecretReady, check, types2.NotInLocals(KeyMsvcOutput).Error()).Err(nil)
+		return req.CheckFailed(HelmSecretReady, check, errors.NotInLocals(KeyMsvcOutput).Error()).Err(nil)
 	}
 
 	if helmSecret == nil {
@@ -246,7 +246,7 @@ func (r *ServiceReconciler) reconHelmSecret(req *rApi.Request[*mongodbMsvcv1.Sta
 
 func (r *ServiceReconciler) reconHelm(req *rApi.Request[*mongodbMsvcv1.StandaloneService]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := ct.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(HelmReady)
 	defer req.LogPostCheck(HelmReady)
@@ -314,7 +314,7 @@ func (r *ServiceReconciler) reconHelm(req *rApi.Request[*mongodbMsvcv1.Standalon
 
 func (r *ServiceReconciler) reconSts(req *rApi.Request[*mongodbMsvcv1.StandaloneService]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := ct.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(StsReady)
 	defer req.LogPostCheck(StsReady)

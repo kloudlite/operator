@@ -3,6 +3,7 @@ package v1
 import (
 	ct "github.com/kloudlite/operator/apis/common-types"
 	"github.com/kloudlite/operator/pkg/constants"
+	rApi "github.com/kloudlite/operator/pkg/operator"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -31,7 +32,7 @@ type StandaloneService struct {
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	Spec   StandaloneServiceSpec `json:"spec,omitempty"`
-	Status ct.Status             `json:"status,omitempty"`
+	Status rApi.Status           `json:"status,omitempty"`
 }
 
 func (ss *StandaloneService) EnsureGVK() {
@@ -40,7 +41,7 @@ func (ss *StandaloneService) EnsureGVK() {
 	}
 }
 
-func (ss *StandaloneService) GetStatus() *ct.Status {
+func (ss *StandaloneService) GetStatus() *rApi.Status {
 	return &ss.Status
 }
 

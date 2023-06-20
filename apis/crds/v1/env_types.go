@@ -1,10 +1,10 @@
 package v1
 
 import (
-	"github.com/kloudlite/operator/apis/common-types"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/kloudlite/operator/pkg/constants"
+	rApi "github.com/kloudlite/operator/pkg/operator"
 )
 
 type EnvSpec struct {
@@ -24,8 +24,8 @@ type Env struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   EnvSpec             `json:"spec,omitempty"`
-	Status common_types.Status `json:"status,omitempty"`
+	Spec   EnvSpec     `json:"spec,omitempty"`
+	Status rApi.Status `json:"status,omitempty"`
 }
 
 func (e *Env) EnsureGVK() {
@@ -34,7 +34,7 @@ func (e *Env) EnsureGVK() {
 	}
 }
 
-func (e *Env) GetStatus() *common_types.Status {
+func (e *Env) GetStatus() *rApi.Status {
 	return &e.Status
 }
 

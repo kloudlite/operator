@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	types2 "github.com/kloudlite/operator/logging"
 	"github.com/kloudlite/operator/pkg/kubectl"
 	"time"
 
@@ -15,6 +14,7 @@ import (
 	"github.com/kloudlite/operator/pkg/conditions"
 	"github.com/kloudlite/operator/pkg/constants"
 	fn "github.com/kloudlite/operator/pkg/functions"
+	"github.com/kloudlite/operator/pkg/logging"
 	rApi "github.com/kloudlite/operator/pkg/operator"
 	stepResult "github.com/kloudlite/operator/pkg/operator/step-result"
 	"github.com/kloudlite/operator/pkg/templates"
@@ -34,7 +34,7 @@ import (
 type Reconciler struct {
 	client.Client
 	Scheme     *runtime.Scheme
-	logger     types2.Logger
+	logger     logging.Logger
 	Name       string
 	Env        *env.Env
 	yamlClient *kubectl.YAMLClient
@@ -119,7 +119,7 @@ func (r *Reconciler) finalize(req *rApi.Request[*influxdbMsvcv1.Service]) stepRe
 
 func (r *Reconciler) reconDefaults(req *rApi.Request[*influxdbMsvcv1.Service]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := ct.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(DefaultsPatched)
 	defer req.LogPostCheck(DefaultsPatched)
@@ -153,7 +153,7 @@ func (r *Reconciler) reconDefaults(req *rApi.Request[*influxdbMsvcv1.Service]) s
 
 func (r *Reconciler) reconAccessCreds(req *rApi.Request[*influxdbMsvcv1.Service]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := ct.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(AccessCredsReady)
 	defer req.LogPostCheck(AccessCredsReady)
@@ -228,7 +228,7 @@ func (r *Reconciler) reconAccessCreds(req *rApi.Request[*influxdbMsvcv1.Service]
 
 func (r *Reconciler) reconHelm(req *rApi.Request[*influxdbMsvcv1.Service]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := ct.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(HelmReady)
 	defer req.LogPostCheck(HelmReady)
@@ -296,7 +296,7 @@ func (r *Reconciler) reconHelm(req *rApi.Request[*influxdbMsvcv1.Service]) stepR
 
 func (r *Reconciler) reconSts(req *rApi.Request[*influxdbMsvcv1.Service]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := ct.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(StsReady)
 	defer req.LogPostCheck(StsReady)
@@ -350,7 +350,7 @@ func (r *Reconciler) reconSts(req *rApi.Request[*influxdbMsvcv1.Service]) stepRe
 	return req.Next()
 }
 
-func (r *Reconciler) SetupWithManager(mgr ctrl.Manager, logger types2.Logger) error {
+func (r *Reconciler) SetupWithManager(mgr ctrl.Manager, logger logging.Logger) error {
 	r.Client = mgr.GetClient()
 	r.Scheme = mgr.GetScheme()
 	r.logger = logger.WithName(r.Name)

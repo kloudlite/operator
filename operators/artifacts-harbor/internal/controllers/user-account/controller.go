@@ -5,9 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/kloudlite/operator/apis/common-types"
-	"github.com/kloudlite/operator/logging"
-	"github.com/kloudlite/operator/pkg/errors"
 	"net/http"
 	"strconv"
 	"time"
@@ -19,9 +16,11 @@ import (
 	artifactsv1 "github.com/kloudlite/operator/apis/artifacts/v1"
 	"github.com/kloudlite/operator/operators/artifacts-harbor/internal/env"
 	"github.com/kloudlite/operator/pkg/constants"
+	"github.com/kloudlite/operator/pkg/errors"
 	fn "github.com/kloudlite/operator/pkg/functions"
 	"github.com/kloudlite/operator/pkg/harbor"
 	"github.com/kloudlite/operator/pkg/kubectl"
+	"github.com/kloudlite/operator/pkg/logging"
 	rApi "github.com/kloudlite/operator/pkg/operator"
 	stepResult "github.com/kloudlite/operator/pkg/operator/step-result"
 	corev1 "k8s.io/api/core/v1"
@@ -103,7 +102,7 @@ func (r *Reconciler) finalize(req *rApi.Request[*artifactsv1.HarborUserAccount])
 	ctx, obj := req.Context(), req.Object
 
 	userDeleted := "user-deleted"
-	check := common_types.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(userDeleted)
 	defer req.LogPreCheck(userDeleted)
@@ -147,7 +146,7 @@ func (r *Reconciler) finalize(req *rApi.Request[*artifactsv1.HarborUserAccount])
 
 func (r *Reconciler) patchDefaults(req *rApi.Request[*artifactsv1.HarborUserAccount]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
-	check := common_types.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(DefaultsPatched)
 	defer req.LogPostCheck(DefaultsPatched)
@@ -214,7 +213,7 @@ func patchServiceAccount(ctx context.Context, client client.Client, namespace, s
 
 func (r *Reconciler) ensureRobotAccount(req *rApi.Request[*artifactsv1.HarborUserAccount]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
-	check := common_types.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(RobotAccountReady)
 	defer req.LogPostCheck(RobotAccountReady)

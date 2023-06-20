@@ -2,16 +2,15 @@ package project
 
 import (
 	"context"
-	"github.com/kloudlite/operator/apis/common-types"
-	"github.com/kloudlite/operator/logging"
-	"github.com/kloudlite/operator/pkg/errors"
 	"net/http"
 	"time"
 
 	artifactsv1 "github.com/kloudlite/operator/apis/artifacts/v1"
 	"github.com/kloudlite/operator/operators/artifacts-harbor/internal/env"
 	"github.com/kloudlite/operator/pkg/constants"
+	"github.com/kloudlite/operator/pkg/errors"
 	"github.com/kloudlite/operator/pkg/harbor"
+	"github.com/kloudlite/operator/pkg/logging"
 	rApi "github.com/kloudlite/operator/pkg/operator"
 	stepResult "github.com/kloudlite/operator/pkg/operator/step-result"
 	corev1 "k8s.io/api/core/v1"
@@ -99,7 +98,7 @@ func (r *Reconciler) finalize(req *rApi.Request[*artifactsv1.HarborProject]) ste
 
 func (r *Reconciler) reconDefaults(req *rApi.Request[*artifactsv1.HarborProject]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
-	check := common_types.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(DefaultsPatched)
 	defer req.LogPostCheck(DefaultsPatched)
@@ -129,7 +128,7 @@ func (r *Reconciler) reconDefaults(req *rApi.Request[*artifactsv1.HarborProject]
 
 func (r *Reconciler) reconHarborProject(req *rApi.Request[*artifactsv1.HarborProject]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
-	check := common_types.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(HarborProjectReady)
 	defer req.LogPostCheck(HarborProjectReady)
@@ -175,7 +174,7 @@ func (r *Reconciler) reconHarborProject(req *rApi.Request[*artifactsv1.HarborPro
 
 func (r *Reconciler) reconWebhook(req *rApi.Request[*artifactsv1.HarborProject]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
-	check := common_types.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(WebhookReady)
 	defer req.LogPostCheck(WebhookReady)

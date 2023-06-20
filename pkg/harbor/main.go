@@ -3,11 +3,12 @@ package harbor
 import (
 	"context"
 	"fmt"
-	"github.com/kloudlite/operator/pkg/errors"
 	"io"
 	"net/http"
 	"net/url"
 	"strings"
+
+	"github.com/kloudlite/operator/pkg/errors"
 )
 
 type Config interface {

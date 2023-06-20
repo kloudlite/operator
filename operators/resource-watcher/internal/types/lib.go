@@ -5,11 +5,11 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/kloudlite/operator/apis/common-types"
 	"strings"
 
 	"github.com/kloudlite/operator/operators/resource-watcher/types"
 	"github.com/kloudlite/operator/pkg/constants"
+	rApi "github.com/kloudlite/operator/pkg/operator"
 	"github.com/kloudlite/operator/pkg/redpanda"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -51,7 +51,7 @@ func (n *Notifier) Notify(ctx context.Context, key string, statusUpdate types.Re
 	return err
 }
 
-func (n *Notifier) Notify2(ctx context.Context, key string, metadata KlMetadata, status common_types.Status, stage stageTT) error {
+func (n *Notifier) Notify2(ctx context.Context, key string, metadata KlMetadata, status rApi.Status, stage stageTT) error {
 	metadata.ClusterId = n.clusterId
 	msg := MessageReply{
 		Metadata: metadata,

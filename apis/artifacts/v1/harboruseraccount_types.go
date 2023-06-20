@@ -1,9 +1,9 @@
 package v1
 
 import (
-	"github.com/kloudlite/operator/apis/common-types"
 	"github.com/kloudlite/operator/pkg/constants"
 	"github.com/kloudlite/operator/pkg/harbor"
+	rApi "github.com/kloudlite/operator/pkg/operator"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -29,7 +29,7 @@ type HarborUserAccount struct {
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	Spec   HarborUserAccountSpec `json:"spec,omitempty"`
-	Status common_types.Status   `json:"status,omitempty"`
+	Status rApi.Status           `json:"status,omitempty"`
 }
 
 func (h *HarborUserAccount) EnsureGVK() {
@@ -38,7 +38,7 @@ func (h *HarborUserAccount) EnsureGVK() {
 	}
 }
 
-func (h *HarborUserAccount) GetStatus() *common_types.Status {
+func (h *HarborUserAccount) GetStatus() *rApi.Status {
 	return &h.Status
 }
 

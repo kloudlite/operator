@@ -1,12 +1,13 @@
 package router
 
 import (
-	"github.com/kloudlite/operator/logging"
 	"os"
 	"testing"
 	"time"
 
 	certmanagerv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
+	"github.com/kloudlite/operator/pkg/logging"
+
 	crdsv1 "github.com/kloudlite/operator/apis/crds/v1"
 	"github.com/kloudlite/operator/operators/routers/internal/env"
 	. "github.com/kloudlite/operator/testing"

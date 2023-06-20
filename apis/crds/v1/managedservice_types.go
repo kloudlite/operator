@@ -1,12 +1,13 @@
 package v1
 
 import (
-	"github.com/kloudlite/operator/apis/common-types"
 	"github.com/kloudlite/operator/pkg/constants"
-	rawJson "github.com/kloudlite/operator/pkg/raw-json"
+	rApi "github.com/kloudlite/operator/pkg/operator"
 	corev1 "k8s.io/api/core/v1"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	rawJson "github.com/kloudlite/operator/pkg/raw-json"
 )
 
 type msvcKind struct {
@@ -42,8 +43,8 @@ type ManagedService struct {
 	Spec ManagedServiceSpec `json:"spec,omitempty"`
 
 	// +kubebuilder:default=true
-	Enabled *bool               `json:"enabled,omitempty"`
-	Status  common_types.Status `json:"status,omitempty"`
+	Enabled *bool       `json:"enabled,omitempty"`
+	Status  rApi.Status `json:"status,omitempty"`
 }
 
 func (m *ManagedService) EnsureGVK() {
@@ -52,7 +53,7 @@ func (m *ManagedService) EnsureGVK() {
 	}
 }
 
-func (m *ManagedService) GetStatus() *common_types.Status {
+func (m *ManagedService) GetStatus() *rApi.Status {
 	return &m.Status
 }
 

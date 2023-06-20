@@ -3,6 +3,7 @@ package v1
 import (
 	ct "github.com/kloudlite/operator/apis/common-types"
 	"github.com/kloudlite/operator/pkg/constants"
+	rApi "github.com/kloudlite/operator/pkg/operator"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -32,8 +33,8 @@ type Kibana struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   KibanaSpec `json:"spec,omitempty"`
-	Status ct.Status  `json:"status,omitempty"`
+	Spec   KibanaSpec  `json:"spec,omitempty"`
+	Status rApi.Status `json:"status,omitempty"`
 }
 
 func (k *Kibana) EnsureGVK() {
@@ -42,7 +43,7 @@ func (k *Kibana) EnsureGVK() {
 	}
 }
 
-func (k *Kibana) GetStatus() *ct.Status {
+func (k *Kibana) GetStatus() *rApi.Status {
 	return &k.Status
 }
 

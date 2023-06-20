@@ -2,10 +2,9 @@ package operator
 
 import (
 	"encoding/json"
-	"github.com/kloudlite/operator/apis/common-types"
 	"reflect"
 
-	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
@@ -18,12 +17,12 @@ type res struct {
 		Patches []jsonPatch.PatchOperation `json:"patches,omitempty"`
 	} `json:"overrides,omitempty"`
 	Status struct {
-		Checks  map[string]common_types.Check `json:"checks,omitempty"`
-		IsReady *bool                         `json:"isReady"`
+		Checks  map[string]Check `json:"checks,omitempty"`
+		IsReady *bool            `json:"isReady"`
 	} `json:"status"`
 }
 
-func getRes(obj runtime.Object) res {
+func getRes(obj client.Object) res {
 	b, err := json.Marshal(obj)
 	if err != nil {
 		return res{}

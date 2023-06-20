@@ -1,8 +1,8 @@
 package v1
 
 import (
-	"github.com/kloudlite/operator/apis/common-types"
 	"github.com/kloudlite/operator/pkg/constants"
+	rApi "github.com/kloudlite/operator/pkg/operator"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -24,8 +24,8 @@ type Topic struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   TopicSpec           `json:"spec,omitempty"`
-	Status common_types.Status `json:"status,omitempty"`
+	Spec   TopicSpec   `json:"spec,omitempty"`
+	Status rApi.Status `json:"status,omitempty"`
 }
 
 func (t *Topic) EnsureGVK() {
@@ -34,7 +34,7 @@ func (t *Topic) EnsureGVK() {
 	}
 }
 
-func (t *Topic) GetStatus() *common_types.Status {
+func (t *Topic) GetStatus() *rApi.Status {
 	return &t.Status
 }
 

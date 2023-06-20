@@ -2,10 +2,10 @@ package redpanda
 
 import (
 	"fmt"
-	"github.com/kloudlite/operator/pkg/errors"
 	"os/exec"
 	"strings"
 
+	"github.com/kloudlite/operator/pkg/errors"
 	fn "github.com/kloudlite/operator/pkg/functions"
 	exec2 "k8s.io/utils/exec"
 )

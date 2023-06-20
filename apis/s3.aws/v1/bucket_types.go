@@ -2,8 +2,8 @@ package v1
 
 import (
 	"fmt"
-	"github.com/kloudlite/operator/apis/common-types"
 	"github.com/kloudlite/operator/pkg/constants"
+	rApi "github.com/kloudlite/operator/pkg/operator"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -20,11 +20,11 @@ type Bucket struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   BucketSpec          `json:"spec"`
-	Status common_types.Status `json:"status,omitempty"`
+	Spec   BucketSpec  `json:"spec"`
+	Status rApi.Status `json:"status,omitempty"`
 }
 
-func (b *Bucket) GetStatus() *common_types.Status {
+func (b *Bucket) GetStatus() *rApi.Status {
 	return &b.Status
 }
 

@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/kloudlite/operator/logging"
-	types2 "github.com/kloudlite/operator/pkg/errors"
 	"time"
 
 	ct "github.com/kloudlite/operator/apis/common-types"
@@ -14,8 +12,10 @@ import (
 	"github.com/kloudlite/operator/operators/msvc-mysql/internal/types"
 	"github.com/kloudlite/operator/pkg/conditions"
 	"github.com/kloudlite/operator/pkg/constants"
+	"github.com/kloudlite/operator/pkg/errors"
 	fn "github.com/kloudlite/operator/pkg/functions"
 	"github.com/kloudlite/operator/pkg/kubectl"
+	"github.com/kloudlite/operator/pkg/logging"
 	rApi "github.com/kloudlite/operator/pkg/operator"
 	stepResult "github.com/kloudlite/operator/pkg/operator/step-result"
 	"github.com/kloudlite/operator/pkg/templates"
@@ -128,7 +128,7 @@ func (r *Reconciler) finalize(req *rApi.Request[*mysqlMsvcv1.ClusterService]) st
 func (r *Reconciler) reconAccessCreds(req *rApi.Request[*mysqlMsvcv1.ClusterService]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
 
-	check := ct.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 	secretName := "msvc-" + obj.Name
 	scrt, err := rApi.Get(ctx, r.Client, fn.NN(obj.Namespace, secretName), &corev1.Secret{})
 	if err != nil {
@@ -224,7 +224,7 @@ func (r *Reconciler) reconAccessCreds(req *rApi.Request[*mysqlMsvcv1.ClusterServ
 
 func (r *Reconciler) reconHelm(req *rApi.Request[*mysqlMsvcv1.ClusterService]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := ct.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	helmRes, err := rApi.Get(
 		ctx, r.Client, fn.NN(obj.Namespace, obj.Name), fn.NewUnstructured(constants.HelmMysqlType),
@@ -236,7 +236,7 @@ func (r *Reconciler) reconHelm(req *rApi.Request[*mysqlMsvcv1.ClusterService]) s
 
 	stsPvcInitSize, ok := rApi.GetLocal[string](req, KeyStsPvcInitSize)
 	if !ok {
-		return req.CheckFailed(HelmReady, check, types2.NotInLocals(KeyStsPvcInitSize).Error()).Err(nil)
+		return req.CheckFailed(HelmReady, check, errors.NotInLocals(KeyStsPvcInitSize).Error()).Err(nil)
 	}
 
 	if helmRes == nil || check.Generation > checks[HelmReady].Generation {
@@ -295,7 +295,7 @@ func (r *Reconciler) reconHelm(req *rApi.Request[*mysqlMsvcv1.ClusterService]) s
 
 func (r *Reconciler) reconSts(req *rApi.Request[*mysqlMsvcv1.ClusterService]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := ct.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 	var stsList appsv1.StatefulSetList
 
 	if err := r.List(
@@ -347,7 +347,7 @@ func (r *Reconciler) reconSts(req *rApi.Request[*mysqlMsvcv1.ClusterService]) st
 
 func (r *Reconciler) reconPVC(req *rApi.Request[*mysqlMsvcv1.ClusterService]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := ct.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	var pvcList corev1.PersistentVolumeClaimList
 	if err := r.List(

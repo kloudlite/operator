@@ -1,8 +1,0 @@
-go 1.20
-
-use (
-	./pkg/errors
-	./pkg/logging
-	./pkg/raw-json
-	./pkg/redis
-)

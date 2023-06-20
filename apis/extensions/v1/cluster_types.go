@@ -3,6 +3,7 @@ package v1
 import (
 	ct "github.com/kloudlite/operator/apis/common-types"
 	"github.com/kloudlite/operator/pkg/constants"
+	rApi "github.com/kloudlite/operator/pkg/operator"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -31,7 +32,7 @@ type Cluster struct {
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	Spec   ClusterSpec `json:"spec,omitempty"`
-	Status ct.Status   `json:"status,omitempty"`
+	Status rApi.Status `json:"status,omitempty"`
 }
 
 func (c *Cluster) EnsureGVK() {
@@ -40,7 +41,7 @@ func (c *Cluster) EnsureGVK() {
 	}
 }
 
-func (c *Cluster) GetStatus() *ct.Status {
+func (c *Cluster) GetStatus() *rApi.Status {
 	return &c.Status
 }
 

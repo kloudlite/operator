@@ -5,10 +5,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/kloudlite/operator/pkg/errors"
 	"io/ioutil"
 	"net/http"
 	"time"
+
+	"github.com/kloudlite/operator/pkg/errors"
 )
 
 type Project struct {

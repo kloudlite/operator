@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	types3 "github.com/kloudlite/operator/logging"
 	corev1 "k8s.io/api/core/v1"
 	"log"
 	"strings"
@@ -32,6 +31,7 @@ import (
 	t "github.com/kloudlite/operator/operators/resource-watcher/types"
 	"github.com/kloudlite/operator/pkg/constants"
 	fn "github.com/kloudlite/operator/pkg/functions"
+	"github.com/kloudlite/operator/pkg/logging"
 	rApi "github.com/kloudlite/operator/pkg/operator"
 )
 
@@ -39,7 +39,7 @@ import (
 type Reconciler struct {
 	client.Client
 	Scheme                    *runtime.Scheme
-	logger                    types3.Logger
+	logger                    logging.Logger
 	Name                      string
 	Env                       *env.Env
 	GetGrpcConnection         func() (*grpc.ClientConn, error)
@@ -53,7 +53,7 @@ func (r *Reconciler) GetName() string {
 	return r.Name
 }
 
-func (r *Reconciler) SendResourceEvents(ctx context.Context, obj client.Object, logger types3.Logger) (ctrl.Result, error) {
+func (r *Reconciler) SendResourceEvents(ctx context.Context, obj client.Object, logger logging.Logger) (ctrl.Result, error) {
 	obj.SetManagedFields(nil)
 
 	b, err := json.Marshal(obj)
@@ -191,7 +191,7 @@ func (r *Reconciler) RemoveWatcherFinalizer(ctx context.Context, obj client.Obje
 }
 
 // SetupWithManager sets up the controllers with the Manager.
-func (r *Reconciler) SetupWithManager(mgr ctrl.Manager, logger types3.Logger) error {
+func (r *Reconciler) SetupWithManager(mgr ctrl.Manager, logger logging.Logger) error {
 	r.Client = mgr.GetClient()
 	r.Scheme = mgr.GetScheme()
 	r.logger = logger.WithName(r.Name)

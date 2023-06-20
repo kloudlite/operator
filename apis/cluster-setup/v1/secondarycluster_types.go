@@ -1,7 +1,7 @@
 package v1
 
 import (
-	"github.com/kloudlite/operator/apis/common-types"
+	rApi "github.com/kloudlite/operator/pkg/operator"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -26,7 +26,7 @@ type SecondaryCluster struct {
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	Spec   SecondaryClusterSpec `json:"spec,omitempty"`
-	Status common_types.Status  `json:"status,omitempty"`
+	Status rApi.Status          `json:"status,omitempty"`
 }
 
 func (sc *SecondaryCluster) EnsureGVK() {
@@ -35,7 +35,7 @@ func (sc *SecondaryCluster) EnsureGVK() {
 	}
 }
 
-func (sc *SecondaryCluster) GetStatus() *common_types.Status {
+func (sc *SecondaryCluster) GetStatus() *rApi.Status {
 	return &sc.Status
 }
 

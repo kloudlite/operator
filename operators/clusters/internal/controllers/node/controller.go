@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/kloudlite/operator/apis/common-types"
-	"github.com/kloudlite/operator/logging"
 	"time"
 
 	batchv1 "k8s.io/api/batch/v1"
@@ -22,6 +20,7 @@ import (
 	"github.com/kloudlite/operator/pkg/constants"
 	"github.com/kloudlite/operator/pkg/functions"
 	"github.com/kloudlite/operator/pkg/kubectl"
+	"github.com/kloudlite/operator/pkg/logging"
 	rApi "github.com/kloudlite/operator/pkg/operator"
 	stepResult "github.com/kloudlite/operator/pkg/operator/step-result"
 	"github.com/kloudlite/operator/pkg/templates"
@@ -103,7 +102,7 @@ func (r *Reconciler) finalize(req *rApi.Request[*clustersv1.Node]) stepResult.Re
 	// finalize only if node deleted
 
 	ctx, obj := req.Context(), req.Object
-	check := common_types.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	failed := func(e error) stepResult.Result {
 		return req.CheckFailed("fail in ensure nodes", check, e.Error())
@@ -233,7 +232,7 @@ func (r *Reconciler) finalize(req *rApi.Request[*clustersv1.Node]) stepResult.Re
 
 func (r *Reconciler) ensureNodeReady(req *rApi.Request[*clustersv1.Node]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := common_types.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	failed := func(err error) stepResult.Result {
 		return req.CheckFailed("ensure-node-ready", check, err.Error())

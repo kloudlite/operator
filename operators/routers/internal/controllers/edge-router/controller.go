@@ -3,8 +3,6 @@ package edgeRouter
 import (
 	"context"
 	acmev1 "github.com/cert-manager/cert-manager/pkg/apis/acme/v1"
-	"github.com/kloudlite/operator/apis/common-types"
-	"github.com/kloudlite/operator/logging"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
@@ -19,6 +17,7 @@ import (
 	"github.com/kloudlite/operator/pkg/constants"
 	fn "github.com/kloudlite/operator/pkg/functions"
 	"github.com/kloudlite/operator/pkg/kubectl"
+	"github.com/kloudlite/operator/pkg/logging"
 	rApi "github.com/kloudlite/operator/pkg/operator"
 	stepResult "github.com/kloudlite/operator/pkg/operator/step-result"
 	"github.com/kloudlite/operator/pkg/templates"
@@ -102,7 +101,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.
 
 func (r *Reconciler) finalize(req *rApi.Request[*crdsv1.EdgeRouter]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
-	check := common_types.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	// STEP 1: ensure all ingress nginx controllers are deleted
 	nginxes := unstructured.UnstructuredList{
@@ -151,7 +150,7 @@ func (r *Reconciler) finalize(req *rApi.Request[*crdsv1.EdgeRouter]) stepResult.
 
 func (r *Reconciler) ensureClusterIssuer(req *rApi.Request[*crdsv1.EdgeRouter]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
-	check := common_types.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(ClusterIssuerReady)
 	defer req.LogPostCheck(ClusterIssuerReady)
@@ -174,8 +173,8 @@ func (r *Reconciler) ensureClusterIssuer(req *rApi.Request[*crdsv1.EdgeRouter]) 
 			for _, s := range defaultIssuer.Spec.ACME.Solvers {
 				if s.DNS01 != nil {
 					acmeDnsSolvers = append(acmeDnsSolvers, s)
+					}
 				}
-			}
 		}
 	}
 
@@ -221,7 +220,7 @@ func (r *Reconciler) ensureClusterIssuer(req *rApi.Request[*crdsv1.EdgeRouter]) 
 
 func (r *Reconciler) ensureIngressController(req *rApi.Request[*crdsv1.EdgeRouter]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
-	check := common_types.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(IngressControllerReady)
 	defer req.LogPostCheck(IngressControllerReady)

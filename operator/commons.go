@@ -1,7 +1,6 @@
 package operator
 
 import (
-	"github.com/kloudlite/operator/apis/common-types"
 	crdsv1 "github.com/kloudlite/operator/apis/crds/v1"
 	"github.com/kloudlite/operator/pkg/constants"
 	fn "github.com/kloudlite/operator/pkg/functions"
@@ -13,7 +12,7 @@ import (
 
 func EnsureAnchor[T rApi.Resource](req *rApi.Request[T]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.GetStatus().Checks
-	check := common_types.Check{Generation: req.Object.GetGeneration()}
+	check := rApi.Check{Generation: req.Object.GetGeneration()}
 
 	anchor := &crdsv1.Anchor{ObjectMeta: metav1.ObjectMeta{Name: req.GetAnchorName(), Namespace: obj.GetNamespace()}}
 	if _, err := controllerutil.CreateOrUpdate(ctx, req.GetClient(), anchor, func() error {

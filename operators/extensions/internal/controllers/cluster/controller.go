@@ -3,7 +3,6 @@ package cluster
 import (
 	"context"
 	"fmt"
-	"github.com/kloudlite/operator/logging"
 	"time"
 
 	ct "github.com/kloudlite/operator/apis/common-types"
@@ -12,6 +11,7 @@ import (
 	"github.com/kloudlite/operator/operators/extensions/internal/env"
 	"github.com/kloudlite/operator/pkg/constants"
 	fn "github.com/kloudlite/operator/pkg/functions"
+	"github.com/kloudlite/operator/pkg/logging"
 	rApi "github.com/kloudlite/operator/pkg/operator"
 	stepResult "github.com/kloudlite/operator/pkg/operator/step-result"
 	corev1 "k8s.io/api/core/v1"
@@ -105,7 +105,7 @@ func (r *Reconciler) finalize(req *rApi.Request[*extensionsv1.Cluster]) stepResu
 
 func (r *Reconciler) reconRedpandaTopics(req *rApi.Request[*extensionsv1.Cluster]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := ct.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	clusterTopics := []string{
 		fmt.Sprintf("%s-incoming", obj.Name),
@@ -150,7 +150,7 @@ func (r *Reconciler) reconRedpandaTopics(req *rApi.Request[*extensionsv1.Cluster
 
 func (r *Reconciler) aggregateClusterKubeconfigs(req *rApi.Request[*extensionsv1.Cluster]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := ct.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	var kubeConfigsList corev1.SecretList
 	if err := r.List(

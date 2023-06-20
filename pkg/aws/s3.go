@@ -3,13 +3,13 @@ package aws
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/kloudlite/operator/logging"
-	"github.com/kloudlite/operator/pkg/errors"
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/kloudlite/operator/pkg/errors"
+	"github.com/kloudlite/operator/pkg/logging"
 )
 
 type s3Obj struct {
@@ -30,7 +30,7 @@ func NewS3Client(region string) (*s3Obj, error) {
 		},
 	)
 
-	l, err := errors.New(&logging.Options{Name: "aws/s3", Dev: false})
+	l, err := logging.New(&logging.Options{Name: "aws/s3", Dev: false})
 	if err != nil {
 		return nil, errors.NewEf(err, "initializing logging")
 	}

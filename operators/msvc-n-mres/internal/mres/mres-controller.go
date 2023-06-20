@@ -3,8 +3,6 @@ package mres
 import (
 	"context"
 	"encoding/json"
-	"github.com/kloudlite/operator/apis/common-types"
-	"github.com/kloudlite/operator/logging"
 	"github.com/kloudlite/operator/operator"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -22,6 +20,7 @@ import (
 	fn "github.com/kloudlite/operator/pkg/functions"
 	"github.com/kloudlite/operator/pkg/harbor"
 	"github.com/kloudlite/operator/pkg/kubectl"
+	"github.com/kloudlite/operator/pkg/logging"
 	rApi "github.com/kloudlite/operator/pkg/operator"
 	stepResult "github.com/kloudlite/operator/pkg/operator/step-result"
 	"github.com/kloudlite/operator/pkg/templates"
@@ -128,7 +127,7 @@ func (r *Reconciler) finalize(req *rApi.Request[*crdsv1.ManagedResource]) stepRe
 
 func (r *Reconciler) patchDefaults(req *rApi.Request[*crdsv1.ManagedResource]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
-	check := common_types.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(MsvcIsOwner)
 	defer req.LogPostCheck(MsvcIsOwner)
@@ -173,7 +172,7 @@ func (r *Reconciler) patchDefaults(req *rApi.Request[*crdsv1.ManagedResource]) s
 
 func (r *Reconciler) ensureRealMresCreated(req *rApi.Request[*crdsv1.ManagedResource]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
-	check := common_types.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(RealMresCreated)
 	defer req.LogPostCheck(RealMresCreated)
@@ -204,7 +203,7 @@ func (r *Reconciler) ensureRealMresCreated(req *rApi.Request[*crdsv1.ManagedReso
 
 func (r *Reconciler) ensureRealMresReady(req *rApi.Request[*crdsv1.ManagedResource]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
-	check := common_types.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(RealMresReady)
 	defer req.LogPreCheck(RealMresReady)
@@ -222,7 +221,7 @@ func (r *Reconciler) ensureRealMresReady(req *rApi.Request[*crdsv1.ManagedResour
 	}
 
 	var realMresObj struct {
-		Status common_types.Status `json:"status"`
+		Status rApi.Status `json:"status"`
 	}
 
 	if err := json.Unmarshal(b, &realMresObj); err != nil {

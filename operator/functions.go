@@ -3,9 +3,9 @@ package operator
 import (
 	"flag"
 	"fmt"
-	rApi "github.com/kloudlite/operator/apis/common-types"
-	"github.com/kloudlite/operator/logging"
 	"github.com/kloudlite/operator/pkg/kubectl"
+	"github.com/kloudlite/operator/pkg/logging"
+	rApi "github.com/kloudlite/operator/pkg/operator"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"

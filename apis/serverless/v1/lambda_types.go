@@ -2,11 +2,11 @@ package v1
 
 import (
 	"fmt"
-	"github.com/kloudlite/operator/apis/common-types"
 
 	v1 "github.com/kloudlite/operator/apis/crds/v1"
 	"github.com/kloudlite/operator/pkg/constants"
 	fn "github.com/kloudlite/operator/pkg/functions"
+	rApi "github.com/kloudlite/operator/pkg/operator"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -41,8 +41,8 @@ type Lambda struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   LambdaSpec          `json:"spec,omitempty"`
-	Status common_types.Status `json:"status,omitempty"`
+	Spec   LambdaSpec  `json:"spec,omitempty"`
+	Status rApi.Status `json:"status,omitempty"`
 }
 
 func (lm *Lambda) EnsureGVK() {
@@ -51,7 +51,7 @@ func (lm *Lambda) EnsureGVK() {
 	}
 }
 
-func (lm *Lambda) GetStatus() *common_types.Status {
+func (lm *Lambda) GetStatus() *rApi.Status {
 	return &lm.Status
 }
 

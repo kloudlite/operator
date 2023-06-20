@@ -3,8 +3,8 @@ package driver
 import (
 	certmanagerv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
 	crdsv1 "github.com/kloudlite/operator/apis/crds/v1"
-	"github.com/kloudlite/operator/logging"
 	"github.com/kloudlite/operator/operators/csi-drivers/internal/env"
+	"github.com/kloudlite/operator/pkg/logging"
 	. "github.com/kloudlite/operator/testing"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"

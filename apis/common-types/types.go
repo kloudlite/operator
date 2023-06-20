@@ -3,9 +3,7 @@ package common_types
 import (
 	"fmt"
 	"github.com/kloudlite/operator/pkg/errors"
-	"github.com/kloudlite/operator/pkg/raw-json"
 	"k8s.io/apimachinery/pkg/api/resource"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type Storage struct {
@@ -126,20 +124,4 @@ type ConfigRef struct {
 type Output struct {
 	SecretRef *SecretRef `json:"secretRef,omitempty"`
 	ConfigRef *ConfigRef `json:"configRef,omitempty"`
-}
-
-type Status struct {
-	// +kubebuilder:validation:Optional
-	IsReady   bool              `json:"isReady"`
-	Resources []ResourceRef     `json:"resources,omitempty"`
-	Message   *raw_json.RawJson `json:"message,omitempty"`
-
-	Checks            map[string]Check `json:"checks,omitempty"`
-	LastReconcileTime *v1.Time         `json:"lastReconcileTime,omitempty"`
-}
-
-type Check struct {
-	Status     bool   `json:"status"`
-	Message    string `json:"message,omitempty"`
-	Generation int64  `json:"generation,omitempty"`
 }

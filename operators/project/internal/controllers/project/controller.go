@@ -3,8 +3,6 @@ package project
 import (
 	"context"
 	"fmt"
-	"github.com/kloudlite/operator/apis/common-types"
-	"github.com/kloudlite/operator/logging"
 	appsv1 "k8s.io/api/apps/v1"
 	"time"
 
@@ -24,6 +22,7 @@ import (
 	"github.com/kloudlite/operator/pkg/constants"
 	fn "github.com/kloudlite/operator/pkg/functions"
 	"github.com/kloudlite/operator/pkg/kubectl"
+	"github.com/kloudlite/operator/pkg/logging"
 	rApi "github.com/kloudlite/operator/pkg/operator"
 	stepResult "github.com/kloudlite/operator/pkg/operator/step-result"
 	"github.com/kloudlite/operator/pkg/templates"
@@ -106,7 +105,7 @@ func (r *Reconciler) finalize(req *rApi.Request[*v1.Project]) stepResult.Result 
 
 func (r *Reconciler) ensureNamespace(req *rApi.Request[*v1.Project]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
-	check := common_types.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(NamespaceExists)
 	defer req.LogPostCheck(NamespaceExists)
@@ -138,7 +137,7 @@ func (r *Reconciler) ensureNamespace(req *rApi.Request[*v1.Project]) stepResult.
 
 func (r *Reconciler) ensureNamespacedRBACs(req *rApi.Request[*v1.Project]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := common_types.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(NamespacedRBACsReady)
 	defer req.LogPreCheck(NamespacedRBACsReady)
@@ -189,7 +188,7 @@ func (r *Reconciler) ensureNamespacedRBACs(req *rApi.Request[*v1.Project]) stepR
 
 func (r *Reconciler) ensureEnvRouteSwitcher(req *rApi.Request[*v1.Project]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
-	check := common_types.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(EnvRouteSwitcherReady)
 	defer req.LogPostCheck(EnvRouteSwitcherReady)

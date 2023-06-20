@@ -10,6 +10,7 @@ require (
 	github.com/evanphx/json-patch/v5 v5.6.0
 	github.com/fatih/color v1.13.0
 	github.com/go-playground/validator/v10 v10.11.2
+	github.com/go-redis/redis/v8 v8.11.5
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/goombaio/namegenerator v0.0.0-20181006234301-989e774b106e
 	github.com/influxdata/influxdb-client-go/v2 v2.9.0
@@ -21,6 +22,7 @@ require (
 	github.com/sirupsen/logrus v1.9.0
 	github.com/twmb/franz-go v1.6.0
 	github.com/urfave/cli/v2 v2.16.0
+	github.com/yext/yerrors v0.0.0-20201026182705-b30cf71caa54
 	go.mongodb.org/mongo-driver v1.9.1
 	go.uber.org/zap v1.21.0
 	golang.org/x/crypto v0.5.0
@@ -184,6 +186,3 @@ require (
 	sigs.k8s.io/kustomize/kyaml v0.13.9 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 )
-
-//replace github.com/kloudlite/operator/logging => ./pkg/logging
-//replace github.com/kloudlite/operator/redis => ./pkg/redis

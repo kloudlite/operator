@@ -3,7 +3,6 @@ package primary
 import (
 	"fmt"
 	v1 "github.com/kloudlite/operator/apis/cluster-setup/v1"
-	"github.com/kloudlite/operator/apis/common-types"
 	lc "github.com/kloudlite/operator/operators/cluster-setup/internal/constants"
 	"github.com/kloudlite/operator/operators/cluster-setup/internal/templates"
 	fn "github.com/kloudlite/operator/pkg/functions"
@@ -37,7 +36,7 @@ type ReconFn func(req *rApi.Request[*v1.PrimaryCluster]) stepResult.Result
 
 func (r *Reconciler) ensureWebhookAuthzSecrets(req *rApi.Request[*v1.PrimaryCluster]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := common_types.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(WebhookAuthzSecretsReady)
 	defer req.LogPostCheck(WebhookAuthzSecretsReady)
@@ -65,7 +64,7 @@ func (r *Reconciler) ensureWebhookAuthzSecrets(req *rApi.Request[*v1.PrimaryClus
 
 func (r *Reconciler) ensureStripeCreds(req *rApi.Request[*v1.PrimaryCluster]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := common_types.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	screds, err := rApi.Get(ctx, r.Client, fn.NN(obj.Spec.StripeCreds.Namespace, obj.Spec.StripeCreds.Name), &corev1.Secret{})
 	if err != nil {
@@ -95,7 +94,7 @@ func (r *Reconciler) ensureStripeCreds(req *rApi.Request[*v1.PrimaryCluster]) st
 
 func (r *Reconciler) ensureAuthApi(req *rApi.Request[*v1.PrimaryCluster]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := common_types.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(AuthApiCreated)
 	defer req.LogPostCheck(AuthApiCreated)
@@ -124,7 +123,7 @@ func (r *Reconciler) ensureAuthApi(req *rApi.Request[*v1.PrimaryCluster]) stepRe
 
 func (r *Reconciler) ensureConsoleApi(req *rApi.Request[*v1.PrimaryCluster]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := common_types.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(ConsoleApiCreated)
 	defer req.LogPostCheck(ConsoleApiCreated)
@@ -171,7 +170,7 @@ func (r *Reconciler) ensureConsoleApi(req *rApi.Request[*v1.PrimaryCluster]) ste
 
 func (r *Reconciler) ensureCIApi(req *rApi.Request[*v1.PrimaryCluster]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := common_types.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(CiApiCreated)
 	defer req.LogPostCheck(CiApiCreated)
@@ -200,7 +199,7 @@ func (r *Reconciler) ensureCIApi(req *rApi.Request[*v1.PrimaryCluster]) stepResu
 
 func (r *Reconciler) ensureDnsApi(req *rApi.Request[*v1.PrimaryCluster]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := common_types.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(DnsApiCreated)
 	defer req.LogPostCheck(DnsApiCreated)
@@ -231,7 +230,7 @@ func (r *Reconciler) ensureDnsApi(req *rApi.Request[*v1.PrimaryCluster]) stepRes
 
 func (r *Reconciler) ensureFinanceApi(req *rApi.Request[*v1.PrimaryCluster]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := common_types.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(FinanceApiCreated)
 	defer req.LogPostCheck(FinanceApiCreated)
@@ -260,7 +259,7 @@ func (r *Reconciler) ensureFinanceApi(req *rApi.Request[*v1.PrimaryCluster]) ste
 
 func (r *Reconciler) ensureIAMApi(req *rApi.Request[*v1.PrimaryCluster]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := common_types.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(IAMApiCreated)
 	defer req.LogPostCheck(IAMApiCreated)
@@ -289,7 +288,7 @@ func (r *Reconciler) ensureIAMApi(req *rApi.Request[*v1.PrimaryCluster]) stepRes
 
 func (r *Reconciler) ensureCommsApi(req *rApi.Request[*v1.PrimaryCluster]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := common_types.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(CommsApiCreated)
 	defer req.LogPostCheck(CommsApiCreated)
@@ -318,7 +317,7 @@ func (r *Reconciler) ensureCommsApi(req *rApi.Request[*v1.PrimaryCluster]) stepR
 
 func (r *Reconciler) ensureWebhooksApi(req *rApi.Request[*v1.PrimaryCluster]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := common_types.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(WebhooksApiCreated)
 	defer req.LogPostCheck(WebhooksApiCreated)
@@ -347,7 +346,7 @@ func (r *Reconciler) ensureWebhooksApi(req *rApi.Request[*v1.PrimaryCluster]) st
 
 func (r *Reconciler) ensureJsEvalApi(req *rApi.Request[*v1.PrimaryCluster]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := common_types.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(JsEvalApiCreated)
 	defer req.LogPostCheck(JsEvalApiCreated)
@@ -376,7 +375,7 @@ func (r *Reconciler) ensureJsEvalApi(req *rApi.Request[*v1.PrimaryCluster]) step
 
 func (r *Reconciler) ensureAuditLoggingWorker(req *rApi.Request[*v1.PrimaryCluster]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := common_types.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	b, err := templates.Parse(templates.AuditLoggingWorker, map[string]any{
 		"namespace":        lc.NsCore,
@@ -402,7 +401,7 @@ func (r *Reconciler) ensureAuditLoggingWorker(req *rApi.Request[*v1.PrimaryClust
 
 func (r *Reconciler) ensureInfraApi(req *rApi.Request[*v1.PrimaryCluster]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := common_types.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(InfraApiCreated)
 	defer req.LogPostCheck(InfraApiCreated)
@@ -431,7 +430,7 @@ func (r *Reconciler) ensureInfraApi(req *rApi.Request[*v1.PrimaryCluster]) stepR
 
 func (r *Reconciler) ensureGatewayApi(req *rApi.Request[*v1.PrimaryCluster]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := common_types.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(GatewayApiCreated)
 	defer req.LogPostCheck(GatewayApiCreated)

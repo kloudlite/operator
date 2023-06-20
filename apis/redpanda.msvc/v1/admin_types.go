@@ -1,8 +1,8 @@
 package v1
 
 import (
-	"github.com/kloudlite/operator/apis/common-types"
 	"github.com/kloudlite/operator/pkg/constants"
+	rApi "github.com/kloudlite/operator/pkg/operator"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -38,8 +38,8 @@ type Admin struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   AdminSpec           `json:"spec,omitempty"`
-	Status common_types.Status `json:"status,omitempty"`
+	Spec   AdminSpec   `json:"spec,omitempty"`
+	Status rApi.Status `json:"status,omitempty"`
 }
 
 func (adm *Admin) EnsureGVK() {
@@ -48,7 +48,7 @@ func (adm *Admin) EnsureGVK() {
 	}
 }
 
-func (adm *Admin) GetStatus() *common_types.Status {
+func (adm *Admin) GetStatus() *rApi.Status {
 	return &adm.Status
 }
 

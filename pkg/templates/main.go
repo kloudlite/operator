@@ -6,13 +6,14 @@ import (
 	"embed"
 	"encoding/hex"
 	"fmt"
-	"github.com/kloudlite/operator/pkg/errors"
 	"path/filepath"
 	"reflect"
 	"text/template"
 
 	"github.com/Masterminds/sprig/v3"
 	"sigs.k8s.io/yaml"
+
+	"github.com/kloudlite/operator/pkg/errors"
 )
 
 //go:embed templates

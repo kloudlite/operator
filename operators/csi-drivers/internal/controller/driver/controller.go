@@ -3,7 +3,6 @@ package driver
 import (
 	"context"
 	"fmt"
-	"github.com/kloudlite/operator/logging"
 	"time"
 
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
@@ -15,6 +14,7 @@ import (
 	"github.com/kloudlite/operator/pkg/constants"
 	fn "github.com/kloudlite/operator/pkg/functions"
 	"github.com/kloudlite/operator/pkg/kubectl"
+	"github.com/kloudlite/operator/pkg/logging"
 	rApi "github.com/kloudlite/operator/pkg/operator"
 	stepResult "github.com/kloudlite/operator/pkg/operator/step-result"
 	"github.com/kloudlite/operator/pkg/templates"
@@ -104,7 +104,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.
 
 func (r *Reconciler) finalize(req *rApi.Request[*csiv1.Driver]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
-	check := ct.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	// 1. Ensure Deleting of CSI Drivers
 	if obj.Spec.Provider == "aws" {
@@ -161,7 +161,7 @@ func (r *Reconciler) finalize(req *rApi.Request[*csiv1.Driver]) stepResult.Resul
 
 func (r *Reconciler) reconCSIDriver(req *rApi.Request[*csiv1.Driver]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
-	check := ct.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(CSIDriversReady)
 	defer req.LogPostCheck(CSIDriversReady)
@@ -231,7 +231,7 @@ func (r *Reconciler) reconCSIDriver(req *rApi.Request[*csiv1.Driver]) stepResult
 
 func (r *Reconciler) reconStorageClasses(req *rApi.Request[*csiv1.Driver]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
-	check := ct.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(StorageClassesReady)
 	defer req.LogPostCheck(StorageClassesReady)

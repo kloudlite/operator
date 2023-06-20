@@ -3,8 +3,6 @@ package msvc
 import (
 	"context"
 	"encoding/json"
-	"github.com/kloudlite/operator/apis/common-types"
-	"github.com/kloudlite/operator/logging"
 	"time"
 
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -25,6 +23,7 @@ import (
 	"github.com/kloudlite/operator/pkg/constants"
 	fn "github.com/kloudlite/operator/pkg/functions"
 	"github.com/kloudlite/operator/pkg/kubectl"
+	"github.com/kloudlite/operator/pkg/logging"
 	rApi "github.com/kloudlite/operator/pkg/operator"
 	stepResult "github.com/kloudlite/operator/pkg/operator/step-result"
 	"github.com/kloudlite/operator/pkg/templates"
@@ -119,7 +118,7 @@ func (r *Reconciler) finalize(req *rApi.Request[*crdsv1.ManagedService]) stepRes
 
 func (r *Reconciler) ensureRealMsvcCreated(req *rApi.Request[*crdsv1.ManagedService]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
-	check := common_types.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(RealMsvcCreated)
 	defer req.LogPostCheck(RealMsvcCreated)
@@ -149,7 +148,7 @@ func (r *Reconciler) ensureRealMsvcCreated(req *rApi.Request[*crdsv1.ManagedServ
 
 func (r *Reconciler) ensureRealMsvcReady(req *rApi.Request[*crdsv1.ManagedService]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
-	check := common_types.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(RealMsvcReady)
 	defer req.LogPostCheck(RealMsvcReady)
@@ -169,7 +168,7 @@ func (r *Reconciler) ensureRealMsvcReady(req *rApi.Request[*crdsv1.ManagedServic
 	}
 
 	var realMsvcObj struct {
-		Status common_types.Status `json:"status"`
+		Status rApi.Status `json:"status"`
 	}
 	if err := json.Unmarshal(b, &realMsvcObj); err != nil {
 		return req.CheckFailed(RealMsvcReady, check, err.Error()).Err(nil)

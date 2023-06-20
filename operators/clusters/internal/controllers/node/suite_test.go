@@ -1,7 +1,6 @@
 package node
 
 import (
-	"github.com/kloudlite/operator/logging"
 	"testing"
 	"time"
 
@@ -10,6 +9,7 @@ import (
 
 	crdsv1 "github.com/kloudlite/operator/apis/crds/v1"
 	"github.com/kloudlite/operator/operators/clusters/internal/env"
+	"github.com/kloudlite/operator/pkg/logging"
 	. "github.com/kloudlite/operator/testing"
 )
 

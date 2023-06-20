@@ -3,8 +3,7 @@ package env
 import (
 	"context"
 	"fmt"
-	"github.com/kloudlite/operator/apis/common-types"
-	"github.com/kloudlite/operator/logging"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apiLabels "k8s.io/apimachinery/pkg/labels"
@@ -21,6 +20,7 @@ import (
 	"github.com/kloudlite/operator/pkg/constants"
 	fn "github.com/kloudlite/operator/pkg/functions"
 	"github.com/kloudlite/operator/pkg/kubectl"
+	"github.com/kloudlite/operator/pkg/logging"
 	rApi "github.com/kloudlite/operator/pkg/operator"
 	stepResult "github.com/kloudlite/operator/pkg/operator/step-result"
 	"github.com/kloudlite/operator/pkg/templates"
@@ -105,7 +105,7 @@ func (r *Reconciler) finalize(req *rApi.Request[*crdsv1.Env]) stepResult.Result 
 
 func (r *Reconciler) ensureNamespace(req *rApi.Request[*crdsv1.Env]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
-	check := common_types.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(NamespaceReady)
 	defer req.LogPostCheck(NamespaceReady)
@@ -142,7 +142,7 @@ func (r *Reconciler) ensureNamespace(req *rApi.Request[*crdsv1.Env]) stepResult.
 
 func (r *Reconciler) ensureNamespaceRBACs(req *rApi.Request[*crdsv1.Env]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := common_types.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(NamespacedRBACsReady)
 	defer req.LogPreCheck(NamespacedRBACsReady)
@@ -194,7 +194,7 @@ func (r *Reconciler) ensureNamespaceRBACs(req *rApi.Request[*crdsv1.Env]) stepRe
 
 func (r *Reconciler) ensureRoutingFromProject(req *rApi.Request[*crdsv1.Env]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := common_types.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	var routers crdsv1.RouterList
 	if err := r.List(ctx, &routers, &client.ListOptions{
@@ -245,8 +245,8 @@ func (r *Reconciler) ensureRoutingFromProject(req *rApi.Request[*crdsv1.Env]) st
 			return req.CheckFailed(RoutersCreated, check, err.Error()).Err(nil)
 		}
 
-		req.AddToOwnedResources(common_types.ResourceRef{
-			TypeMeta:  router.TypeMeta,
+		req.AddToOwnedResources(rApi.ResourceRef{
+			TypeMeta: router.TypeMeta,
 			Namespace: localRouter.Namespace,
 			Name:      localRouter.Name,
 		})

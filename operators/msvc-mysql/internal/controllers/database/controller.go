@@ -3,9 +3,6 @@ package database
 import (
 	"context"
 	"fmt"
-	"github.com/kloudlite/operator/apis/common-types"
-	"github.com/kloudlite/operator/logging"
-	types2 "github.com/kloudlite/operator/pkg/errors"
 	"strings"
 	"time"
 
@@ -13,8 +10,10 @@ import (
 	"github.com/kloudlite/operator/operators/msvc-mysql/internal/env"
 	"github.com/kloudlite/operator/operators/msvc-mysql/internal/types"
 	"github.com/kloudlite/operator/pkg/constants"
+	"github.com/kloudlite/operator/pkg/errors"
 	fn "github.com/kloudlite/operator/pkg/functions"
 	"github.com/kloudlite/operator/pkg/kubectl"
+	"github.com/kloudlite/operator/pkg/logging"
 	libMysql "github.com/kloudlite/operator/pkg/mysql"
 	rApi "github.com/kloudlite/operator/pkg/operator"
 	stepResult "github.com/kloudlite/operator/pkg/operator/step-result"
@@ -115,7 +114,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.
 func (r *Reconciler) finalize(req *rApi.Request[*mysqlMsvcv1.Database]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
 
-	check := common_types.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	if step := req.EnsureChecks(DBUserDeleted); !step.ShouldProceed() {
 		return step
@@ -128,7 +127,7 @@ func (r *Reconciler) finalize(req *rApi.Request[*mysqlMsvcv1.Database]) stepResu
 
 	msvcOutput, err := fn.ParseFromSecret[types.MsvcOutput](msvcSecret)
 	if err != nil {
-		return req.CheckFailed(AccessCredsReady, check, types2.NewEf(err, "msvc output could not be parsed").Error()).Err(nil)
+		return req.CheckFailed(AccessCredsReady, check, errors.NewEf(err, "msvc output could not be parsed").Error()).Err(nil)
 	}
 
 	if obj.Status.IsReady {
@@ -152,7 +151,7 @@ func (r *Reconciler) finalize(req *rApi.Request[*mysqlMsvcv1.Database]) stepResu
 
 func (r *Reconciler) reconOwnership(req *rApi.Request[*mysqlMsvcv1.Database]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
-	check := common_types.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	msvc, err := rApi.Get(
 		ctx, r.Client, fn.NN(obj.Namespace, obj.Spec.MsvcRef.Name), fn.NewUnstructured(
@@ -194,7 +193,7 @@ func sanitizeDbUsername(username string) string {
 
 func (r *Reconciler) reconDBCreds(req *rApi.Request[*mysqlMsvcv1.Database]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := common_types.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	accessSecretName := "mres-" + obj.Name
 
@@ -211,7 +210,7 @@ func (r *Reconciler) reconDBCreds(req *rApi.Request[*mysqlMsvcv1.Database]) step
 
 	msvcOutput, err := fn.ParseFromSecret[types.MsvcOutput](msvcSecret)
 	if err != nil {
-		return req.CheckFailed(AccessCredsReady, check, types2.NewEf(err, "msvc output could not be parsed").Error()).Err(nil)
+		return req.CheckFailed(AccessCredsReady, check, errors.NewEf(err, "msvc output could not be parsed").Error()).Err(nil)
 	}
 
 	if accessSecret == nil {
@@ -269,11 +268,11 @@ func (r *Reconciler) reconDBCreds(req *rApi.Request[*mysqlMsvcv1.Database]) step
 
 func (r *Reconciler) reconDBUser(req *rApi.Request[*mysqlMsvcv1.Database]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := common_types.Check{Generation: obj.Generation}
+	check := rApi.Check{Generation: obj.Generation}
 
 	msvcOutput, ok := rApi.GetLocal[types.MsvcOutput](req, KeyMsvcOutput)
 	if !ok {
-		return req.CheckFailed(DBUserReady, check, types2.NotInLocals(KeyMsvcOutput).Error()).Err(nil)
+		return req.CheckFailed(DBUserReady, check, errors.NotInLocals(KeyMsvcOutput).Error()).Err(nil)
 	}
 
 	mysqlCli, err := libMysql.NewClient(msvcOutput.Hosts, "mysql", "root", msvcOutput.RootPassword)
@@ -284,12 +283,12 @@ func (r *Reconciler) reconDBUser(req *rApi.Request[*mysqlMsvcv1.Database]) stepR
 
 	mresOutput, ok := rApi.GetLocal[types.MresOutput](req, KeyMresOutput)
 	if !ok {
-		return req.CheckFailed(DBUserReady, check, types2.NotInLocals(KeyMresOutput).Error()).Err(nil)
+		return req.CheckFailed(DBUserReady, check, errors.NotInLocals(KeyMresOutput).Error()).Err(nil)
 	}
 
 	if err := mysqlCli.Connect(ctx); err != nil {
 		req.Logger.Errorf(err, "failed to connect to mysql db instance, retrying in 5 seconds because")
-		return req.CheckFailed(DBUserReady, check, types2.NewEf(err, "failed to connect to db").Error()).Err(nil).RequeueAfter(5 * time.Second)
+		return req.CheckFailed(DBUserReady, check, errors.NewEf(err, "failed to connect to db").Error()).Err(nil).RequeueAfter(5 * time.Second)
 	}
 	defer mysqlCli.Close()
 

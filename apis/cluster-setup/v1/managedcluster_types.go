@@ -1,8 +1,8 @@
 package v1
 
 import (
-	"github.com/kloudlite/operator/apis/common-types"
 	"github.com/kloudlite/operator/pkg/constants"
+	rApi "github.com/kloudlite/operator/pkg/operator"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -73,8 +73,8 @@ type ManagedCluster struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   ManagedClusterSpec  `json:"spec,omitempty"`
-	Status common_types.Status `json:"status,omitempty"`
+	Spec   ManagedClusterSpec `json:"spec,omitempty"`
+	Status rApi.Status        `json:"status,omitempty"`
 }
 
 func (mc *ManagedCluster) EnsureGVK() {
@@ -83,7 +83,7 @@ func (mc *ManagedCluster) EnsureGVK() {
 	}
 }
 
-func (mc *ManagedCluster) GetStatus() *common_types.Status {
+func (mc *ManagedCluster) GetStatus() *rApi.Status {
 	return &mc.Status
 }
 

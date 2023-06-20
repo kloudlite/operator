@@ -1,10 +1,10 @@
 package v1
 
 import (
-	"github.com/kloudlite/operator/apis/common-types"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/kloudlite/operator/pkg/constants"
+	rApi "github.com/kloudlite/operator/pkg/operator"
 )
 
 type Route struct {
@@ -71,8 +71,8 @@ type Router struct {
 
 	Spec RouterSpec `json:"spec,omitempty"`
 	// +kubebuilder:default=true
-	Enabled bool                `json:"enabled,omitempty"`
-	Status  common_types.Status `json:"status,omitempty"`
+	Enabled bool        `json:"enabled,omitempty"`
+	Status  rApi.Status `json:"status,omitempty"`
 }
 
 func (r *Router) EnsureGVK() {
@@ -81,7 +81,7 @@ func (r *Router) EnsureGVK() {
 	}
 }
 
-func (r *Router) GetStatus() *common_types.Status {
+func (r *Router) GetStatus() *rApi.Status {
 	return &r.Status
 }
 
