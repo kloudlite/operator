@@ -2,6 +2,8 @@ package account
 
 import (
 	"context"
+	"github.com/kloudlite/operator/apis/common-types"
+	"github.com/kloudlite/operator/logging"
 	"time"
 
 	artifactsv1 "github.com/kloudlite/operator/apis/artifacts/v1"
@@ -11,7 +13,6 @@ import (
 	fn "github.com/kloudlite/operator/pkg/functions"
 	"github.com/kloudlite/operator/pkg/harbor"
 	"github.com/kloudlite/operator/pkg/kubectl"
-	"github.com/kloudlite/operator/pkg/logging"
 	rApi "github.com/kloudlite/operator/pkg/operator"
 	stepResult "github.com/kloudlite/operator/pkg/operator/step-result"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -86,7 +87,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.
 
 func (r *Reconciler) ensureHarborProjectExists(req *rApi.Request[*crdsv1.Account]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
-	check := rApi.Check{Generation: obj.Generation}
+	check := common_types.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(HarborProjectExists)
 	defer req.LogPostCheck(HarborProjectExists)
@@ -97,7 +98,7 @@ func (r *Reconciler) ensureHarborProjectExists(req *rApi.Request[*crdsv1.Account
 			hp.SetOwnerReferences([]metav1.OwnerReference{fn.AsOwner(obj, true)})
 		}
 
-		req.AddToOwnedResources(rApi.ResourceRef{
+		req.AddToOwnedResources(common_types.ResourceRef{
 			TypeMeta:  metav1.TypeMeta{Kind: hp.GetObjectKind().GroupVersionKind().Kind, APIVersion: hp.GetObjectKind().GroupVersionKind().GroupVersion().String()},
 			Namespace: hp.GetNamespace(),
 			Name:      hp.GetName(),
@@ -118,7 +119,7 @@ func (r *Reconciler) ensureHarborProjectExists(req *rApi.Request[*crdsv1.Account
 
 func (r *Reconciler) ensureHarborUserAccountExists(req *rApi.Request[*crdsv1.Account]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
-	check := rApi.Check{Generation: obj.Generation}
+	check := common_types.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(HarborUserAccountExists)
 	defer req.LogPostCheck(HarborUserAccountExists)
@@ -138,7 +139,7 @@ func (r *Reconciler) ensureHarborUserAccountExists(req *rApi.Request[*crdsv1.Acc
 		hua.Spec.Enabled = true
 		hua.Spec.HarborProjectName = obj.Spec.HarborProjectName
 
-		req.AddToOwnedResources(rApi.ResourceRef{
+		req.AddToOwnedResources(common_types.ResourceRef{
 			TypeMeta:  metav1.TypeMeta{Kind: hua.GetObjectKind().GroupVersionKind().Kind, APIVersion: hua.GetObjectKind().GroupVersionKind().GroupVersion().String()},
 			Namespace: hua.GetNamespace(),
 			Name:      hua.GetName(),

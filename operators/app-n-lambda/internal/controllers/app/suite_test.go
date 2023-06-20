@@ -1,15 +1,14 @@
 package app_test
 
 import (
+	"github.com/kloudlite/operator/logging"
 	"testing"
 	"time"
 
-	"github.com/kloudlite/operator/operators/app-n-lambda/internal/controllers/app"
-	"github.com/kloudlite/operator/operators/app-n-lambda/internal/env"
-	"github.com/kloudlite/operator/pkg/logging"
-
 	artifactsv1 "github.com/kloudlite/operator/apis/artifacts/v1"
 	crdsv1 "github.com/kloudlite/operator/apis/crds/v1"
+	"github.com/kloudlite/operator/operators/app-n-lambda/internal/controllers/app"
+	"github.com/kloudlite/operator/operators/app-n-lambda/internal/env"
 	. "github.com/kloudlite/operator/testing"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"

@@ -2,6 +2,8 @@ package lambda
 
 import (
 	"context"
+	"github.com/kloudlite/operator/apis/common-types"
+	"github.com/kloudlite/operator/logging"
 	"time"
 
 	serverlessv1 "github.com/kloudlite/operator/apis/serverless/v1"
@@ -11,7 +13,6 @@ import (
 	fn "github.com/kloudlite/operator/pkg/functions"
 	"github.com/kloudlite/operator/pkg/harbor"
 	"github.com/kloudlite/operator/pkg/kubectl"
-	"github.com/kloudlite/operator/pkg/logging"
 	rApi "github.com/kloudlite/operator/pkg/operator"
 	stepResult "github.com/kloudlite/operator/pkg/operator/step-result"
 	"github.com/kloudlite/operator/pkg/templates"
@@ -97,7 +98,7 @@ func (r *Reconciler) finalize(req *rApi.Request[*serverlessv1.Lambda]) stepResul
 func (r *Reconciler) reconLambda(req *rApi.Request[*serverlessv1.Lambda]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
 
-	check := rApi.Check{Generation: obj.Generation}
+	check := common_types.Check{Generation: obj.Generation}
 
 	knServing, err := rApi.Get(ctx, r.Client, fn.NN(obj.Namespace, obj.Name), fn.NewUnstructured(constants.KnativeServiceType))
 	if err != nil {

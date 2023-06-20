@@ -4,14 +4,14 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"github.com/kloudlite/operator/logging"
+	"github.com/kloudlite/operator/pkg/errors"
 	"strings"
 
 	"helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/repo"
 	"helm.sh/helm/v3/pkg/time"
 
-	"github.com/kloudlite/operator/pkg/errors"
-	"github.com/kloudlite/operator/pkg/logging"
 	helmclient "github.com/mittwald/go-helm-client"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/yaml"

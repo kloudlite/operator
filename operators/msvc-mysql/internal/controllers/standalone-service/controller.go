@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/kloudlite/operator/logging"
+	types2 "github.com/kloudlite/operator/pkg/errors"
 	"time"
 
 	ct "github.com/kloudlite/operator/apis/common-types"
@@ -12,10 +14,8 @@ import (
 	"github.com/kloudlite/operator/operators/msvc-mysql/internal/types"
 	"github.com/kloudlite/operator/pkg/conditions"
 	"github.com/kloudlite/operator/pkg/constants"
-	"github.com/kloudlite/operator/pkg/errors"
 	fn "github.com/kloudlite/operator/pkg/functions"
 	"github.com/kloudlite/operator/pkg/kubectl"
-	"github.com/kloudlite/operator/pkg/logging"
 	rApi "github.com/kloudlite/operator/pkg/operator"
 	stepResult "github.com/kloudlite/operator/pkg/operator/step-result"
 	"github.com/kloudlite/operator/pkg/templates"
@@ -125,7 +125,7 @@ func (r *ServiceReconciler) finalize(req *rApi.Request[*mysqlMsvcv1.StandaloneSe
 
 func (r *ServiceReconciler) reconAccessCreds(req *rApi.Request[*mysqlMsvcv1.StandaloneService]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
-	check := rApi.Check{Generation: obj.Generation}
+	check := ct.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(AccessCredsReady)
 	defer req.LogPostCheck(AccessCredsReady)
@@ -192,7 +192,7 @@ func (r *ServiceReconciler) reconAccessCreds(req *rApi.Request[*mysqlMsvcv1.Stan
 
 func (r *ServiceReconciler) reconHelmSecret(req *rApi.Request[*mysqlMsvcv1.StandaloneService]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
-	check := rApi.Check{Generation: obj.Generation}
+	check := ct.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(HelmSecretReady)
 	defer req.LogPostCheck(HelmSecretReady)
@@ -208,7 +208,7 @@ func (r *ServiceReconciler) reconHelmSecret(req *rApi.Request[*mysqlMsvcv1.Stand
 
 	msvcOutput, ok := rApi.GetLocal[types.MsvcOutput](req, KeyMsvcOutput)
 	if !ok {
-		return req.CheckFailed(HelmSecretReady, check, errors.NotInLocals(KeyMsvcOutput).Error()).Err(nil)
+		return req.CheckFailed(HelmSecretReady, check, types2.NotInLocals(KeyMsvcOutput).Error()).Err(nil)
 	}
 
 	if helmSecret == nil {
@@ -240,7 +240,7 @@ func (r *ServiceReconciler) reconHelmSecret(req *rApi.Request[*mysqlMsvcv1.Stand
 
 func (r *ServiceReconciler) reconHelm(req *rApi.Request[*mysqlMsvcv1.StandaloneService]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
-	check := rApi.Check{Generation: obj.Generation}
+	check := ct.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(HelmReady)
 	defer req.LogPostCheck(HelmReady)
@@ -305,7 +305,7 @@ func (r *ServiceReconciler) reconHelm(req *rApi.Request[*mysqlMsvcv1.StandaloneS
 
 func (r *ServiceReconciler) reconSts(req *rApi.Request[*mysqlMsvcv1.StandaloneService]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
-	check := rApi.Check{Generation: obj.Generation}
+	check := ct.Check{Generation: obj.Generation}
 	var stsList appsv1.StatefulSetList
 
 	req.LogPreCheck(StsReady)

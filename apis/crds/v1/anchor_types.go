@@ -1,7 +1,7 @@
 package v1
 
 import (
-	rApi "github.com/kloudlite/operator/pkg/operator"
+	"github.com/kloudlite/operator/apis/common-types"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -18,8 +18,8 @@ type Anchor struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   AnchorSpec  `json:"spec,omitempty"`
-	Status rApi.Status `json:"status,omitempty"`
+	Spec   AnchorSpec          `json:"spec,omitempty"`
+	Status common_types.Status `json:"status,omitempty"`
 }
 
 //+kubebuilder:object:root=true

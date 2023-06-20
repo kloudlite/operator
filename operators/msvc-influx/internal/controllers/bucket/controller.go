@@ -3,6 +3,8 @@ package bucket
 import (
 	"context"
 	"encoding/json"
+	"github.com/kloudlite/operator/apis/common-types"
+	types2 "github.com/kloudlite/operator/logging"
 	"time"
 
 	influxdbMsvcv1 "github.com/kloudlite/operator/apis/influxdb.msvc/v1"
@@ -10,7 +12,6 @@ import (
 	"github.com/kloudlite/operator/operators/msvc-influx/internal/types"
 	"github.com/kloudlite/operator/pkg/constants"
 	fn "github.com/kloudlite/operator/pkg/functions"
-	"github.com/kloudlite/operator/pkg/logging"
 	rApi "github.com/kloudlite/operator/pkg/operator"
 	stepResult "github.com/kloudlite/operator/pkg/operator/step-result"
 	"github.com/kloudlite/operator/pkg/templates"
@@ -28,7 +29,7 @@ import (
 type Reconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
-	logger logging.Logger
+	logger types2.Logger
 	Name   string
 	Env    *env.Env
 }
@@ -112,7 +113,7 @@ func (r *Reconciler) finalize(req *rApi.Request[*influxdbMsvcv1.Bucket]) stepRes
 func (r *Reconciler) reconOwnership(req *rApi.Request[*influxdbMsvcv1.Bucket]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
 
-	check := rApi.Check{Generation: obj.Generation}
+	check := common_types.Check{Generation: obj.Generation}
 
 	msvc, err := rApi.Get(
 		ctx, r.Client, fn.NN(obj.Namespace, obj.Spec.MsvcRef.Name), fn.NewUnstructured(
@@ -158,7 +159,7 @@ func getMsvcOutput(secret *corev1.Secret) (*types.MsvcOutput, error) {
 
 func (r *Reconciler) reconAccessCreds(req *rApi.Request[*influxdbMsvcv1.Bucket]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := rApi.Check{Generation: obj.Generation}
+	check := common_types.Check{Generation: obj.Generation}
 
 	msvcSecret, err := rApi.Get(ctx, r.Client, fn.NN(obj.Namespace, "msvc-"+obj.Spec.MsvcRef.Name), &corev1.Secret{})
 	if err != nil {
@@ -255,7 +256,7 @@ func (r *Reconciler) reconInfluxBucket(req *rApi.Request[*influxdbMsvcv1.Bucket]
 	return req.Next()
 }
 
-func (r *Reconciler) SetupWithManager(mgr ctrl.Manager, logger logging.Logger) error {
+func (r *Reconciler) SetupWithManager(mgr ctrl.Manager, logger types2.Logger) error {
 	r.Client = mgr.GetClient()
 	r.Scheme = mgr.GetScheme()
 	r.logger = logger.WithName(r.Name)

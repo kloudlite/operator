@@ -1,8 +1,8 @@
 package v1
 
 import (
+	"github.com/kloudlite/operator/apis/common-types"
 	"github.com/kloudlite/operator/pkg/constants"
-	rApi "github.com/kloudlite/operator/pkg/operator"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -38,11 +38,11 @@ type AccountRouter struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   AccountRouterSpec `json:"spec,omitempty"`
-	Status rApi.Status       `json:"status,omitempty"`
+	Spec   AccountRouterSpec   `json:"spec,omitempty"`
+	Status common_types.Status `json:"status,omitempty"`
 }
 
-func (r *AccountRouter) GetStatus() *rApi.Status {
+func (r *AccountRouter) GetStatus() *common_types.Status {
 	return &r.Status
 }
 

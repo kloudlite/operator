@@ -3,6 +3,7 @@ package primary
 import (
 	"fmt"
 	v1 "github.com/kloudlite/operator/apis/cluster-setup/v1"
+	"github.com/kloudlite/operator/apis/common-types"
 	crdsv1 "github.com/kloudlite/operator/apis/crds/v1"
 	lc "github.com/kloudlite/operator/operators/cluster-setup/internal/constants"
 	"github.com/kloudlite/operator/operators/cluster-setup/internal/templates"
@@ -21,7 +22,7 @@ const (
 
 func (r *Reconciler) installKloudliteAgent(req *rApi.Request[*v1.PrimaryCluster]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := rApi.Check{Generation: obj.Generation}
+	check := common_types.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(KloudliteAgentReady)
 	defer req.LogPostCheck(KloudliteAgentReady)
@@ -54,7 +55,7 @@ func (r *Reconciler) installKloudliteAgent(req *rApi.Request[*v1.PrimaryCluster]
 
 func (r *Reconciler) ensureLokiRouter(req *rApi.Request[*v1.PrimaryCluster]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := rApi.Check{Generation: obj.Generation}
+	check := common_types.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(LokiRouterCreated)
 	defer req.LogPostCheck(LokiRouterCreated)
@@ -96,7 +97,7 @@ func (r *Reconciler) ensureLokiRouter(req *rApi.Request[*v1.PrimaryCluster]) ste
 
 func (r *Reconciler) ensurePrometheusRouter(req *rApi.Request[*v1.PrimaryCluster]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := rApi.Check{Generation: obj.Generation}
+	check := common_types.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(PrometheusRouterCreated)
 	defer req.LogPostCheck(PrometheusRouterCreated)

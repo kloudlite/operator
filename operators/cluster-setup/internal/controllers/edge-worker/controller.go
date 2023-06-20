@@ -2,6 +2,9 @@ package edgeWorker
 
 import (
 	"context"
+	"github.com/kloudlite/operator/apis/common-types"
+	"github.com/kloudlite/operator/logging"
+	"github.com/kloudlite/operator/pkg/errors"
 	"time"
 
 	crdsv1 "github.com/kloudlite/operator/apis/crds/v1"
@@ -9,10 +12,8 @@ import (
 	extensionsv1 "github.com/kloudlite/operator/apis/extensions/v1"
 	"github.com/kloudlite/operator/operators/cluster-setup/internal/env"
 	"github.com/kloudlite/operator/pkg/constants"
-	"github.com/kloudlite/operator/pkg/errors"
 	fn "github.com/kloudlite/operator/pkg/functions"
 	"github.com/kloudlite/operator/pkg/kubectl"
-	"github.com/kloudlite/operator/pkg/logging"
 	rApi "github.com/kloudlite/operator/pkg/operator"
 	stepResult "github.com/kloudlite/operator/pkg/operator/step-result"
 	corev1 "k8s.io/api/core/v1"
@@ -117,7 +118,7 @@ func (r *Reconciler) finalize(req *rApi.Request[*extensionsv1.EdgeWorker]) stepR
 
 func (r *Reconciler) ensureProviderNS(req *rApi.Request[*extensionsv1.EdgeWorker]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
-	check := rApi.Check{Generation: obj.Generation}
+	check := common_types.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(ProviderNSReady)
 	defer req.LogPostCheck(ProviderNSReady)
@@ -164,7 +165,7 @@ func (r *Reconciler) ensureProviderNS(req *rApi.Request[*extensionsv1.EdgeWorker
 
 func (r *Reconciler) ensureEdgeNS(req *rApi.Request[*extensionsv1.EdgeWorker]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
-	check := rApi.Check{Generation: obj.Generation}
+	check := common_types.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(EdgeNSReady)
 	defer req.LogPostCheck(EdgeNSReady)
@@ -205,7 +206,7 @@ func (r *Reconciler) ensureEdgeNS(req *rApi.Request[*extensionsv1.EdgeWorker]) s
 
 func (r *Reconciler) ensureCSIDrivers(req *rApi.Request[*extensionsv1.EdgeWorker]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
-	check := rApi.Check{Generation: obj.Generation}
+	check := common_types.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(CSIDriversReady)
 	defer req.LogPostCheck(CSIDriversReady)
@@ -255,7 +256,7 @@ func (r *Reconciler) ensureCSIDrivers(req *rApi.Request[*extensionsv1.EdgeWorker
 
 func (r *Reconciler) ensureEdgeRouters(req *rApi.Request[*extensionsv1.EdgeWorker]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
-	check := rApi.Check{Generation: obj.Generation}
+	check := common_types.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(EdgeRouterReady)
 	defer req.LogPostCheck(EdgeRouterReady)

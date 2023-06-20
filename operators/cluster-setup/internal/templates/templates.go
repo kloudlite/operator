@@ -3,10 +3,10 @@ package templates
 import (
 	"bytes"
 	"embed"
+	"github.com/kloudlite/operator/pkg/errors"
 	"path/filepath"
 	"text/template"
 
-	"github.com/kloudlite/operator/pkg/errors"
 	libTemplates "github.com/kloudlite/operator/pkg/templates"
 )
 

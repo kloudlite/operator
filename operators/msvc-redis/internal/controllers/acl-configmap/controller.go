@@ -2,6 +2,8 @@ package acl_configmap
 
 import (
 	"context"
+	"github.com/kloudlite/operator/apis/common-types"
+	types2 "github.com/kloudlite/operator/logging"
 	"time"
 
 	"github.com/kloudlite/operator/pkg/kubectl"
@@ -11,7 +13,6 @@ import (
 	"github.com/kloudlite/operator/operators/msvc-redis/internal/types"
 	"github.com/kloudlite/operator/pkg/constants"
 	fn "github.com/kloudlite/operator/pkg/functions"
-	"github.com/kloudlite/operator/pkg/logging"
 	rApi "github.com/kloudlite/operator/pkg/operator"
 	stepResult "github.com/kloudlite/operator/pkg/operator/step-result"
 	"github.com/kloudlite/operator/pkg/templates"
@@ -30,7 +31,7 @@ import (
 type Reconciler struct {
 	client.Client
 	Scheme     *runtime.Scheme
-	logger     logging.Logger
+	logger     types2.Logger
 	Name       string
 	Env        *env.Env
 	yamlClient *kubectl.YAMLClient
@@ -82,7 +83,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.
 
 func (r *Reconciler) reconRedisConfigmap(req *rApi.Request[*redisMsvcv1.ACLConfigMap]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
-	check := rApi.Check{Generation: obj.Generation}
+	check := common_types.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(ACLConfigMapExists)
 	defer req.LogPostCheck(ACLConfigMapExists)
@@ -128,7 +129,7 @@ func (r *Reconciler) reconRedisConfigmap(req *rApi.Request[*redisMsvcv1.ACLConfi
 
 func (r *Reconciler) buildRedisConf(req *rApi.Request[*redisMsvcv1.ACLConfigMap]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
-	check := rApi.Check{Generation: obj.Generation}
+	check := common_types.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(ACLConfigMapReady)
 	defer req.LogPostCheck(ACLConfigMapReady)
@@ -184,7 +185,7 @@ func (r *Reconciler) buildRedisConf(req *rApi.Request[*redisMsvcv1.ACLConfigMap]
 	return req.Next()
 }
 
-func (r *Reconciler) SetupWithManager(mgr ctrl.Manager, logger logging.Logger) error {
+func (r *Reconciler) SetupWithManager(mgr ctrl.Manager, logger types2.Logger) error {
 	r.Client = mgr.GetClient()
 	r.Scheme = mgr.GetScheme()
 	r.logger = logger.WithName(r.Name)

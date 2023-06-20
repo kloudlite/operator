@@ -1,8 +1,8 @@
 package v1
 
 import (
+	"github.com/kloudlite/operator/apis/common-types"
 	"github.com/kloudlite/operator/pkg/constants"
-	rApi "github.com/kloudlite/operator/pkg/operator"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -28,7 +28,7 @@ type Secret struct {
 	// +kubebuilder:default=true
 	Enabled bool `json:"enabled,omitempty"`
 
-	Status rApi.Status `json:"status,omitempty"`
+	Status common_types.Status `json:"status,omitempty"`
 }
 
 func (scrt *Secret) EnsureGVK() {
@@ -41,7 +41,7 @@ func (scrt *Secret) GetGVK() schema.GroupVersionKind {
 	return GroupVersion.WithKind("Secret")
 }
 
-func (scrt *Secret) GetStatus() *rApi.Status {
+func (scrt *Secret) GetStatus() *common_types.Status {
 	return &scrt.Status
 }
 

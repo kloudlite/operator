@@ -1,8 +1,8 @@
 package v1
 
 import (
+	"github.com/kloudlite/operator/apis/common-types"
 	"github.com/kloudlite/operator/pkg/constants"
-	rApi "github.com/kloudlite/operator/pkg/operator"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -18,11 +18,11 @@ type Service struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   ServiceSpec `json:"spec,omitempty"`
-	Status rApi.Status `json:"status,omitempty"`
+	Spec   ServiceSpec         `json:"spec,omitempty"`
+	Status common_types.Status `json:"status,omitempty"`
 }
 
-func (s *Service) GetStatus() *rApi.Status {
+func (s *Service) GetStatus() *common_types.Status {
 	return &s.Status
 }
 

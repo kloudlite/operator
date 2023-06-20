@@ -3,6 +3,9 @@ package operator
 import (
 	"context"
 	"fmt"
+	"github.com/kloudlite/operator/apis/common-types"
+	"github.com/kloudlite/operator/logging"
+	types2 "github.com/kloudlite/operator/pkg/errors"
 	"strings"
 	"time"
 
@@ -18,9 +21,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/kloudlite/operator/pkg/constants"
-	"github.com/kloudlite/operator/pkg/errors"
 	fn "github.com/kloudlite/operator/pkg/functions"
-	"github.com/kloudlite/operator/pkg/logging"
 	stepResult "github.com/kloudlite/operator/pkg/operator/step-result"
 )
 
@@ -36,7 +37,7 @@ type Request[T Resource] struct {
 	reconStartTime time.Time
 	timerMap       map[string]time.Time
 
-	resourceRefs []ResourceRef
+	resourceRefs []common_types.ResourceRef
 }
 
 type ReconcilerCtx context.Context
@@ -75,7 +76,7 @@ func NewRequest[T Resource](ctx ReconcilerCtx, c client.Client, nn types.Namespa
 	}()
 
 	if resource.GetStatus().Checks == nil {
-		resource.GetStatus().Checks = map[string]Check{}
+		resource.GetStatus().Checks = map[string]common_types.Check{}
 	}
 
 	return &Request[T]{
@@ -105,7 +106,7 @@ func (r *Request[T]) EnsureLabelsAndAnnotations() stepResult.Result {
 	if r.Object.GetNamespace() != "" {
 		var ns corev1.Namespace
 		if err := r.client.Get(r.Context(), fn.NN("", r.Object.GetNamespace()), &ns); err != nil {
-			return stepResult.New().Err(errors.NewEf(err, "could not get namespace %q", r.Object.GetNamespace()))
+			return stepResult.New().Err(types2.NewEf(err, "could not get namespace %q", r.Object.GetNamespace()))
 		}
 
 		for k, v := range ns.GetLabels() {
@@ -150,72 +151,6 @@ func (r *Request[T]) EnsureLabelsAndAnnotations() stepResult.Result {
 	return stepResult.New().Continue(true)
 }
 
-// func (r *Request[T]) FailWithStatusError(err error, moreConditions ...metav1.Condition) stepResult.Result {
-// 	if err == nil {
-// 		return stepResult.New().Continue(true)
-// 	}
-//
-// 	statusC := make([]metav1.Condition, 0, len(r.Object.GetStatus().Conditions)+len(moreConditions)+1)
-// 	statusC = append(statusC, r.Object.GetStatus().Conditions...)
-// 	statusC = append(statusC, moreConditions...)
-//
-// 	newConditions, _, err2 := conditions.Patch(
-// 		r.Object.GetStatus().Conditions, append(
-// 			statusC, metav1.Condition{
-// 				Type:    "FailedWithErr",
-// 				Status:  metav1.ConditionFalse,
-// 				Reason:  "StatusFailedWithErr",
-// 				Message: err.Error(),
-// 			},
-// 		),
-// 	)
-//
-// 	if err2 != nil {
-// 		return stepResult.New().Err(err2)
-// 	}
-//
-// 	r.Object.GetStatus().IsReady = false
-// 	r.Object.GetStatus().Conditions = newConditions
-// 	r.Object.GetStatus().LastReconcileTime = &metav1.Time{Time: time.Now()}
-//
-// 	if err2 := r.client.Status().Update(r.ctx, r.Object); err2 != nil {
-// 		return stepResult.New().Err(err2)
-// 	}
-// 	return stepResult.New().Err(err)
-// }
-
-// func (r *Request[T]) FailWithOpError(err error, moreConditions ...metav1.Condition) stepResult.Result {
-// 	if err == nil {
-// 		return stepResult.New().Continue(true)
-// 	}
-//
-// 	opsConditions := make([]metav1.Condition, 0, len(r.Object.GetStatus().OpsConditions)+len(moreConditions)+1)
-// 	opsConditions = append(opsConditions, r.Object.GetStatus().OpsConditions...)
-// 	opsConditions = append(opsConditions, moreConditions...)
-//
-// 	newConditions, _, err2 := conditions.Patch(
-// 		r.Object.GetStatus().OpsConditions, append(
-// 			opsConditions, metav1.Condition{
-// 				Type:    "FailedWithErr",
-// 				Status:  metav1.ConditionFalse,
-// 				Reason:  "OpsFailedWithErr",
-// 				Message: err.Error(),
-// 			},
-// 		),
-// 	)
-// 	if err2 != nil {
-// 		return stepResult.New().Err(err2)
-// 	}
-// 	r.Object.GetStatus().IsReady = false
-// 	r.Object.GetStatus().OpsConditions = newConditions
-// 	r.Object.GetStatus().LastReconcileTime = &metav1.Time{Time: time.Now()}
-//
-// 	if err2 := r.client.Status().Update(r.ctx, r.Object); err2 != nil {
-// 		return stepResult.New().Err(err2)
-// 	}
-// 	return stepResult.New().Err(err)
-// }
-
 func (r *Request[T]) ShouldReconcile() bool {
 	return r.Object.GetLabels()[constants.ShouldReconcile] != "false"
 }
@@ -225,12 +160,12 @@ func (r *Request[T]) EnsureChecks(names ...string) stepResult.Result {
 	nChecks := len(checks)
 
 	if checks == nil {
-		checks = map[string]Check{}
+		checks = map[string]common_types.Check{}
 	}
 
 	for i := range names {
 		if _, ok := checks[names[i]]; !ok {
-			checks[names[i]] = Check{}
+			checks[names[i]] = common_types.Check{}
 		}
 	}
 
@@ -328,11 +263,11 @@ func (r *Request[T]) EnsureFinalizers(finalizers ...string) stepResult.Result {
 	return stepResult.New().Continue(true)
 }
 
-func (r *Request[T]) CheckFailed(name string, check Check, msg string) stepResult.Result {
+func (r *Request[T]) CheckFailed(name string, check common_types.Check, msg string) stepResult.Result {
 	check.Status = false
 	check.Message = msg
 	if r.Object.GetStatus().Checks == nil {
-		r.Object.GetStatus().Checks = make(map[string]Check, 1)
+		r.Object.GetStatus().Checks = make(map[string]common_types.Check, 1)
 	}
 	r.Object.GetStatus().Checks[name] = check
 	r.Object.GetStatus().Message.Set(name, check.Message)
@@ -430,17 +365,17 @@ func (r *Request[T]) LogPostCheck(checkName string) {
 	}
 }
 
-func (r *Request[T]) GetOwnedResources() []ResourceRef {
+func (r *Request[T]) GetOwnedResources() []common_types.ResourceRef {
 	return r.resourceRefs
 }
 
-func (r *Request[T]) AddToOwnedResources(refs ...ResourceRef) {
+func (r *Request[T]) AddToOwnedResources(refs ...common_types.ResourceRef) {
 	r.resourceRefs = append(r.resourceRefs, refs...)
 }
 
 func (r *Request[T]) CleanupOwnedResources() stepResult.Result {
 	ctx, obj := r.Context(), r.Object
-	check := Check{Generation: r.Object.GetGeneration()}
+	check := common_types.Check{Generation: r.Object.GetGeneration()}
 
 	checkName := "cleanupLogic"
 
@@ -480,8 +415,8 @@ func (r *Request[T]) CleanupOwnedResources() stepResult.Result {
 	return r.Next()
 }
 
-func ParseResourceRef(obj client.Object) ResourceRef {
-	return ResourceRef{
+func ParseResourceRef(obj client.Object) common_types.ResourceRef {
+	return common_types.ResourceRef{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       obj.GetObjectKind().GroupVersionKind().Kind,
 			APIVersion: obj.GetObjectKind().GroupVersionKind().GroupVersion().String(),

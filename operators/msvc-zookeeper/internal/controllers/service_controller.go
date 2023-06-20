@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	types2 "github.com/kloudlite/operator/logging"
 	"time"
 
 	ct "github.com/kloudlite/operator/apis/common-types"
@@ -14,7 +15,6 @@ import (
 	"github.com/kloudlite/operator/pkg/constants"
 	fn "github.com/kloudlite/operator/pkg/functions"
 	"github.com/kloudlite/operator/pkg/kubectl"
-	"github.com/kloudlite/operator/pkg/logging"
 	rApi "github.com/kloudlite/operator/pkg/operator"
 	stepResult "github.com/kloudlite/operator/pkg/operator/step-result"
 	"github.com/kloudlite/operator/pkg/templates"
@@ -35,7 +35,7 @@ import (
 type ServiceReconciler struct {
 	client.Client
 	Scheme     *runtime.Scheme
-	logger     logging.Logger
+	logger     types2.Logger
 	Name       string
 	Env        *env.Env
 	yamlClient *kubectl.YAMLClient
@@ -133,7 +133,7 @@ func (r *ServiceReconciler) finalize(req *rApi.Request[*zookeeperMsvcv1.Service]
 
 func (r *ServiceReconciler) reconAccessCreds(req *rApi.Request[*zookeeperMsvcv1.Service]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := rApi.Check{Generation: obj.Generation}
+	check := ct.Check{Generation: obj.Generation}
 
 	scrt, err := rApi.Get(ctx, r.Client, fn.NN(obj.Namespace, getMsvcSecretName(obj.Name)), &corev1.Secret{})
 	if err != nil {
@@ -196,7 +196,7 @@ func (r *ServiceReconciler) reconAccessCreds(req *rApi.Request[*zookeeperMsvcv1.
 
 func (r *ServiceReconciler) ensureHelmSecret(req *rApi.Request[*zookeeperMsvcv1.Service]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := rApi.Check{Generation: obj.Generation}
+	check := ct.Check{Generation: obj.Generation}
 
 	helmScrt, err := rApi.Get(ctx, r.Client, fn.NN(obj.Namespace, getHelmSecretName(obj.Name)), &corev1.Secret{})
 	if err != nil {
@@ -233,7 +233,7 @@ func (r *ServiceReconciler) ensureHelmSecret(req *rApi.Request[*zookeeperMsvcv1.
 
 func (r *ServiceReconciler) reconHelm(req *rApi.Request[*zookeeperMsvcv1.Service]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := rApi.Check{Generation: obj.Generation}
+	check := ct.Check{Generation: obj.Generation}
 
 	helmRes, err := rApi.Get(
 		ctx, r.Client, fn.NN(obj.Namespace, obj.Name), fn.NewUnstructured(constants.HelmZookeeperType),
@@ -302,7 +302,7 @@ func (r *ServiceReconciler) reconHelm(req *rApi.Request[*zookeeperMsvcv1.Service
 
 func (r *ServiceReconciler) reconSts(req *rApi.Request[*zookeeperMsvcv1.Service]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := rApi.Check{Generation: obj.Generation}
+	check := ct.Check{Generation: obj.Generation}
 	var stsList appsv1.StatefulSetList
 
 	if err := r.List(
@@ -353,7 +353,7 @@ func (r *ServiceReconciler) reconSts(req *rApi.Request[*zookeeperMsvcv1.Service]
 	return req.Next()
 }
 
-func (r *ServiceReconciler) SetupWithManager(mgr ctrl.Manager, logger logging.Logger) error {
+func (r *ServiceReconciler) SetupWithManager(mgr ctrl.Manager, logger types2.Logger) error {
 	r.Client = mgr.GetClient()
 	r.Scheme = mgr.GetScheme()
 	r.logger = logger.WithName(r.Name)

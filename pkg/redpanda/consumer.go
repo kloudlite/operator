@@ -2,10 +2,10 @@ package redpanda
 
 import (
 	"context"
+	"github.com/kloudlite/operator/logging"
+	"github.com/kloudlite/operator/pkg/errors"
 	"strings"
 
-	"github.com/kloudlite/operator/pkg/errors"
-	"github.com/kloudlite/operator/pkg/logging"
 	"github.com/twmb/franz-go/pkg/kgo"
 )
 

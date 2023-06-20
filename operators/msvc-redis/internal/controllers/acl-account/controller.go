@@ -3,6 +3,9 @@ package aclaccount
 import (
 	"context"
 	"fmt"
+	"github.com/kloudlite/operator/apis/common-types"
+	"github.com/kloudlite/operator/logging"
+	types2 "github.com/kloudlite/operator/pkg/errors"
 	"time"
 
 	"github.com/kloudlite/operator/pkg/kubectl"
@@ -11,9 +14,7 @@ import (
 	"github.com/kloudlite/operator/operators/msvc-redis/internal/env"
 	"github.com/kloudlite/operator/operators/msvc-redis/internal/types"
 	"github.com/kloudlite/operator/pkg/constants"
-	"github.com/kloudlite/operator/pkg/errors"
 	fn "github.com/kloudlite/operator/pkg/functions"
-	"github.com/kloudlite/operator/pkg/logging"
 	rApi "github.com/kloudlite/operator/pkg/operator"
 	stepResult "github.com/kloudlite/operator/pkg/operator/step-result"
 	libRedis "github.com/kloudlite/operator/pkg/redis"
@@ -115,7 +116,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.
 
 func (r *Reconciler) finalize(req *rApi.Request[*redisMsvcv1.ACLAccount]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
-	check := rApi.Check{Generation: obj.Generation}
+	check := common_types.Check{Generation: obj.Generation}
 
 	// msvc output ref
 	msvcSecret, err := rApi.Get(ctx, r.Client, fn.NN(obj.Namespace, "msvc-"+obj.Spec.MsvcRef.Name), &corev1.Secret{})
@@ -158,7 +159,7 @@ func (r *Reconciler) reconDefaults(req *rApi.Request[*redisMsvcv1.ACLAccount]) s
 
 func (r *Reconciler) reconOwnership(req *rApi.Request[*redisMsvcv1.ACLAccount]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
-	check := rApi.Check{Generation: obj.Generation}
+	check := common_types.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(IsOwnedByMsvc)
 	defer req.LogPostCheck(IsOwnedByMsvc)
@@ -195,7 +196,7 @@ func (r *Reconciler) reconOwnership(req *rApi.Request[*redisMsvcv1.ACLAccount]) 
 
 func (r *Reconciler) reconAccessCreds(req *rApi.Request[*redisMsvcv1.ACLAccount]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
-	check := rApi.Check{Generation: obj.Generation}
+	check := common_types.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(AccessCredsReady)
 	defer req.LogPostCheck(AccessCredsReady)
@@ -210,7 +211,7 @@ func (r *Reconciler) reconAccessCreds(req *rApi.Request[*redisMsvcv1.ACLAccount]
 	// msvc output ref
 	msvcSecret, err := rApi.Get(ctx, r.Client, fn.NN(obj.Namespace, "msvc-"+obj.Spec.MsvcRef.Name), &corev1.Secret{})
 	if err != nil {
-		return req.CheckFailed(AccessCredsReady, check, errors.NewEf(err, "msvc output does not exist").Error()).Err(nil)
+		return req.CheckFailed(AccessCredsReady, check, types2.NewEf(err, "msvc output does not exist").Error()).Err(nil)
 	}
 
 	msvcOutput, err := fn.ParseFromSecret[types.MsvcOutput](msvcSecret)
@@ -266,19 +267,19 @@ func (r *Reconciler) reconAccessCreds(req *rApi.Request[*redisMsvcv1.ACLAccount]
 
 func (r *Reconciler) reconACLUser(req *rApi.Request[*redisMsvcv1.ACLAccount]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
-	check := rApi.Check{Generation: obj.Generation}
+	check := common_types.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(ACLUserReady)
 	defer req.LogPostCheck(ACLUserReady)
 
 	msvcOutput, ok := rApi.GetLocal[types.MsvcOutput](req, KeyMsvcOutput)
 	if !ok {
-		return req.CheckFailed(ACLUserReady, check, errors.NotInLocals(KeyMsvcOutput).Error())
+		return req.CheckFailed(ACLUserReady, check, types2.NotInLocals(KeyMsvcOutput).Error())
 	}
 
 	output, ok := rApi.GetLocal[types.MresOutput](req, KeyMresOutput)
 	if !ok {
-		return req.CheckFailed(ACLUserReady, check, errors.NotInLocals(KeyMresOutput).Error())
+		return req.CheckFailed(ACLUserReady, check, types2.NotInLocals(KeyMresOutput).Error())
 	}
 
 	redisCli, err := libRedis.NewClient(msvcOutput.Hosts, "", msvcOutput.RootPassword)

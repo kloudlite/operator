@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	types2 "github.com/kloudlite/operator/pkg/errors"
 	"os/exec"
 	"regexp"
 	"strings"
@@ -17,8 +18,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	nanoid "github.com/matoous/go-nanoid/v2"
-
-	"github.com/kloudlite/operator/pkg/errors"
 )
 
 type JsonFeatures interface {
@@ -45,11 +44,11 @@ func (j *jsonFeatures) ToB64String(v interface{}) (string, error) {
 func (j *jsonFeatures) FromB64Url(s string, v interface{}) error {
 	b, err := base64.URLEncoding.DecodeString(s)
 	if err != nil {
-		return errors.NewEf(err, "not a valid b64-url string")
+		return types2.NewEf(err, "not a valid b64-url string")
 	}
 	err = json.Unmarshal(b, &v)
 	if err != nil {
-		return errors.NewEf(err, "could not unmarshal")
+		return types2.NewEf(err, "could not unmarshal")
 	}
 
 	return nil

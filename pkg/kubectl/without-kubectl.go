@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"github.com/kloudlite/operator/apis/common-types"
 	"io"
 	"time"
 
@@ -33,11 +34,11 @@ type YAMLClient struct {
 	restMapper    meta.RESTMapper
 }
 
-func (yc *YAMLClient) ApplyYAML(ctx context.Context, yamls ...[]byte) ([]rApi.ResourceRef, error) {
+func (yc *YAMLClient) ApplyYAML(ctx context.Context, yamls ...[]byte) ([]common_types.ResourceRef, error) {
 	jYamls := bytes.Join(yamls, []byte("\n---\n"))
 	decoder := yamlutil.NewYAMLOrJSONDecoder(bytes.NewReader(jYamls), 100)
 
-	var resources []rApi.ResourceRef
+	var resources []common_types.ResourceRef
 
 	for {
 		var rawObj runtime.RawExtension

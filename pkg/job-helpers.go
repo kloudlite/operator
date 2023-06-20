@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/kloudlite/operator/pkg/errors"
 	"os"
 	"path"
 	"text/template"
 
 	"github.com/Masterminds/sprig/v3"
-	"github.com/kloudlite/operator/pkg/errors"
 	"github.com/sirupsen/logrus"
 	batchv1 "k8s.io/api/batch/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

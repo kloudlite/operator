@@ -3,7 +3,6 @@ package v1
 import (
 	ct "github.com/kloudlite/operator/apis/common-types"
 	"github.com/kloudlite/operator/pkg/constants"
-	rApi "github.com/kloudlite/operator/pkg/operator"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -25,7 +24,7 @@ type ACLUser struct {
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	Spec   ACLUserSpec `json:"spec,omitempty"`
-	Status rApi.Status `json:"status,omitempty"`
+	Status ct.Status   `json:"status,omitempty"`
 }
 
 func (user *ACLUser) EnsureGVK() {
@@ -34,7 +33,7 @@ func (user *ACLUser) EnsureGVK() {
 	}
 }
 
-func (user *ACLUser) GetStatus() *rApi.Status {
+func (user *ACLUser) GetStatus() *ct.Status {
 	return &user.Status
 }
 

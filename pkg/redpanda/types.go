@@ -2,10 +2,10 @@ package redpanda
 
 import (
 	"context"
+	"github.com/kloudlite/operator/logging"
 	"time"
 
 	fn "github.com/kloudlite/operator/pkg/functions"
-	"github.com/kloudlite/operator/pkg/logging"
 	"github.com/twmb/franz-go/pkg/kgo"
 	"github.com/twmb/franz-go/pkg/sasl/scram"
 )

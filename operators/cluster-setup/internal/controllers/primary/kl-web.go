@@ -2,6 +2,7 @@ package primary
 
 import (
 	v1 "github.com/kloudlite/operator/apis/cluster-setup/v1"
+	"github.com/kloudlite/operator/apis/common-types"
 	crdsv1 "github.com/kloudlite/operator/apis/crds/v1"
 	lc "github.com/kloudlite/operator/operators/cluster-setup/internal/constants"
 	"github.com/kloudlite/operator/operators/cluster-setup/internal/templates"
@@ -21,7 +22,7 @@ const (
 
 func (r *Reconciler) ensureAuthWeb(req *rApi.Request[*v1.PrimaryCluster]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := rApi.Check{Generation: obj.Generation}
+	check := common_types.Check{Generation: obj.Generation}
 
 	authWeb, err := rApi.Get(ctx, r.Client, fn.NN(lc.NsCore, obj.Spec.SharedConstants.AppAuthWeb), &crdsv1.App{})
 	if err != nil {
@@ -56,7 +57,7 @@ func (r *Reconciler) ensureAuthWeb(req *rApi.Request[*v1.PrimaryCluster]) stepRe
 
 func (r *Reconciler) ensureConsoleWeb(req *rApi.Request[*v1.PrimaryCluster]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := rApi.Check{Generation: obj.Generation}
+	check := common_types.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(ConsoleWebCreated)
 	defer req.LogPostCheck(ConsoleWebCreated)
@@ -94,7 +95,7 @@ func (r *Reconciler) ensureConsoleWeb(req *rApi.Request[*v1.PrimaryCluster]) ste
 
 func (r *Reconciler) ensureAccountsWeb(req *rApi.Request[*v1.PrimaryCluster]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := rApi.Check{Generation: obj.Generation}
+	check := common_types.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(AccountsWebCreated)
 	defer req.LogPostCheck(AccountsWebCreated)
@@ -132,7 +133,7 @@ func (r *Reconciler) ensureAccountsWeb(req *rApi.Request[*v1.PrimaryCluster]) st
 
 func (r *Reconciler) ensureSocketWeb(req *rApi.Request[*v1.PrimaryCluster]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := rApi.Check{Generation: obj.Generation}
+	check := common_types.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(SocketWebCreated)
 	defer req.LogPostCheck(SocketWebCreated)

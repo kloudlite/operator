@@ -2,9 +2,9 @@ package v1
 
 import (
 	"fmt"
+	"github.com/kloudlite/operator/apis/common-types"
 	"github.com/kloudlite/operator/pkg/constants"
 	jsonPatch "github.com/kloudlite/operator/pkg/json-patch"
-	rApi "github.com/kloudlite/operator/pkg/operator"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -160,7 +160,7 @@ type App struct {
 	// +kubebuilder:default=true
 	Enabled *bool `json:"enabled,omitempty"`
 
-	Status rApi.Status `json:"status,omitempty"`
+	Status common_types.Status `json:"status,omitempty"`
 }
 
 func (app *App) EnsureGVK() {
@@ -169,7 +169,7 @@ func (app *App) EnsureGVK() {
 	}
 }
 
-func (app *App) GetStatus() *rApi.Status {
+func (app *App) GetStatus() *common_types.Status {
 	return &app.Status
 }
 

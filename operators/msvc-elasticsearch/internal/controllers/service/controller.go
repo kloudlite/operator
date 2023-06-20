@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/kloudlite/operator/logging"
+	types2 "github.com/kloudlite/operator/pkg/errors"
 	"github.com/kloudlite/operator/pkg/kubectl"
 	"time"
 
@@ -14,9 +16,7 @@ import (
 	"github.com/kloudlite/operator/operators/msvc-elasticsearch/internal/types"
 	"github.com/kloudlite/operator/pkg/conditions"
 	"github.com/kloudlite/operator/pkg/constants"
-	"github.com/kloudlite/operator/pkg/errors"
 	fn "github.com/kloudlite/operator/pkg/functions"
-	"github.com/kloudlite/operator/pkg/logging"
 	rApi "github.com/kloudlite/operator/pkg/operator"
 	stepResult "github.com/kloudlite/operator/pkg/operator/step-result"
 	"github.com/kloudlite/operator/pkg/templates"
@@ -129,7 +129,7 @@ func (r *Reconciler) finalize(req *rApi.Request[*elasticsearchMsvcv1.Service]) s
 func (r *Reconciler) reconAccessCreds(req *rApi.Request[*elasticsearchMsvcv1.Service]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
 
-	check := rApi.Check{Generation: obj.Generation}
+	check := ct.Check{Generation: obj.Generation}
 	secretName := "msvc-" + obj.Name
 	scrt, err := rApi.Get(ctx, r.Client, fn.NN(obj.Namespace, secretName), &corev1.Secret{})
 	if err != nil {
@@ -189,7 +189,7 @@ func (r *Reconciler) reconAccessCreds(req *rApi.Request[*elasticsearchMsvcv1.Ser
 
 func (r *Reconciler) reconHelm(req *rApi.Request[*elasticsearchMsvcv1.Service]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := rApi.Check{Generation: obj.Generation}
+	check := ct.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(HelmReady)
 	defer req.LogPostCheck(HelmReady)
@@ -258,7 +258,7 @@ func (r *Reconciler) reconHelm(req *rApi.Request[*elasticsearchMsvcv1.Service]) 
 
 func (r *Reconciler) reconSts(req *rApi.Request[*elasticsearchMsvcv1.Service]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := rApi.Check{Generation: obj.Generation}
+	check := ct.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(StsReady)
 	defer req.LogPostCheck(StsReady)
@@ -319,7 +319,7 @@ func (r *Reconciler) reconSts(req *rApi.Request[*elasticsearchMsvcv1.Service]) s
 
 func (r *Reconciler) reconKibana(req *rApi.Request[*elasticsearchMsvcv1.Service]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := rApi.Check{Generation: obj.Generation}
+	check := ct.Check{Generation: obj.Generation}
 
 	kibanaRes, err := rApi.Get(ctx, r.Client, fn.NN(obj.Namespace, obj.Name+"-kibana"), &elasticsearchMsvcv1.Kibana{})
 	if err != nil {
@@ -337,7 +337,7 @@ func (r *Reconciler) reconKibana(req *rApi.Request[*elasticsearchMsvcv1.Service]
 		if kibanaRes == nil {
 			msvcOutput, ok := rApi.GetLocal[*types.MsvcOutput](req, KeyOutput)
 			if !ok {
-				return req.CheckFailed(KibanaReady, check, errors.NotInLocals(KeyOutput).Error()).Err(nil)
+				return req.CheckFailed(KibanaReady, check, types2.NotInLocals(KeyOutput).Error()).Err(nil)
 			}
 
 			seed := time.Now().UTC().UnixNano()
@@ -383,7 +383,7 @@ func (r *Reconciler) reconKibana(req *rApi.Request[*elasticsearchMsvcv1.Service]
 			if kibanaRes.Status.Message.RawMessage != nil {
 				b, err := json.Marshal(kibanaRes.Status.Message)
 				if err != nil {
-					return req.CheckFailed(KibanaReady, check, errors.NewEf(err, "could not marshal into json").Error()).Err(nil)
+					return req.CheckFailed(KibanaReady, check, types2.NewEf(err, "could not marshal into json").Error()).Err(nil)
 				}
 				check.Message = string(b)
 			}

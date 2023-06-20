@@ -1,10 +1,10 @@
 package v1
 
 import (
+	"github.com/kloudlite/operator/apis/common-types"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/kloudlite/operator/pkg/constants"
-	rApi "github.com/kloudlite/operator/pkg/operator"
 )
 
 // ProjectSpec defines the desired state of Project
@@ -30,8 +30,8 @@ type Project struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   ProjectSpec `json:"spec,omitempty"`
-	Status rApi.Status `json:"status,omitempty"`
+	Spec   ProjectSpec         `json:"spec,omitempty"`
+	Status common_types.Status `json:"status,omitempty"`
 }
 
 func (p *Project) EnsureGVK() {
@@ -40,7 +40,7 @@ func (p *Project) EnsureGVK() {
 	}
 }
 
-func (p *Project) GetStatus() *rApi.Status {
+func (p *Project) GetStatus() *common_types.Status {
 	return &p.Status
 }
 

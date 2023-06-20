@@ -3,7 +3,7 @@ package edgeWatcher
 import (
 	"context"
 	"encoding/json"
-
+	"github.com/kloudlite/operator/logging"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -20,7 +20,6 @@ import (
 	"github.com/kloudlite/operator/operators/cluster-setup/internal/env"
 	"github.com/kloudlite/operator/pkg/constants"
 	fn "github.com/kloudlite/operator/pkg/functions"
-	"github.com/kloudlite/operator/pkg/logging"
 	rApi "github.com/kloudlite/operator/pkg/operator"
 )
 

@@ -3,6 +3,8 @@ package nodepool
 import (
 	"context"
 	"fmt"
+	"github.com/kloudlite/operator/apis/common-types"
+	"github.com/kloudlite/operator/logging"
 	"time"
 
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
@@ -16,7 +18,6 @@ import (
 	"github.com/kloudlite/operator/operators/clusters/internal/env"
 	"github.com/kloudlite/operator/pkg/constants"
 	"github.com/kloudlite/operator/pkg/kubectl"
-	"github.com/kloudlite/operator/pkg/logging"
 	rApi "github.com/kloudlite/operator/pkg/operator"
 	stepResult "github.com/kloudlite/operator/pkg/operator/step-result"
 )
@@ -93,7 +94,7 @@ func (r *Reconciler) finalize(req *rApi.Request[*clustersv1.NodePool]) stepResul
 	// have to delete all nodes then return finalize()
 
 	ctx, obj := req.Context(), req.Object
-	check := rApi.Check{Generation: obj.Generation}
+	check := common_types.Check{Generation: obj.Generation}
 
 	failed := func(e error) stepResult.Result {
 		return req.CheckFailed("fail in ensure nodes", check, e.Error())
@@ -120,7 +121,7 @@ func (r *Reconciler) finalize(req *rApi.Request[*clustersv1.NodePool]) stepResul
 
 func (r *Reconciler) ensureNodesAsPerReq(req *rApi.Request[*clustersv1.NodePool]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := rApi.Check{Generation: obj.Generation}
+	check := common_types.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(K8sNodePoolCreated)
 	defer req.LogPostCheck(K8sNodePoolCreated)

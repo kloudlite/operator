@@ -3,6 +3,8 @@ package clusterService
 import (
 	"context"
 	"encoding/json"
+	"github.com/kloudlite/operator/apis/common-types"
+	"github.com/kloudlite/operator/logging"
 	"strings"
 	"time"
 
@@ -13,7 +15,6 @@ import (
 	fn "github.com/kloudlite/operator/pkg/functions"
 	"github.com/kloudlite/operator/pkg/harbor"
 	"github.com/kloudlite/operator/pkg/kubectl"
-	"github.com/kloudlite/operator/pkg/logging"
 	rApi "github.com/kloudlite/operator/pkg/operator"
 	stepResult "github.com/kloudlite/operator/pkg/operator/step-result"
 	"github.com/kloudlite/operator/pkg/templates"
@@ -120,7 +121,7 @@ func (r *Reconciler) finalize(req *rApi.Request[*mongodbMsvcv1.ClusterService]) 
 
 func (r *Reconciler) reconAccessCreds(req *rApi.Request[*mongodbMsvcv1.ClusterService]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := rApi.Check{Generation: obj.Generation}
+	check := common_types.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(AccessCredsReady)
 	defer req.LogPostCheck(AccessCredsReady)
@@ -178,7 +179,7 @@ func (r *Reconciler) reconAccessCreds(req *rApi.Request[*mongodbMsvcv1.ClusterSe
 
 func (r *Reconciler) reconHelm(req *rApi.Request[*mongodbMsvcv1.ClusterService]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := rApi.Check{Generation: obj.Generation}
+	check := common_types.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(HelmReady)
 	defer req.LogPostCheck(HelmReady)
@@ -238,7 +239,7 @@ func (r *Reconciler) reconHelm(req *rApi.Request[*mongodbMsvcv1.ClusterService])
 
 func (r *Reconciler) reconSts(req *rApi.Request[*mongodbMsvcv1.ClusterService]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := rApi.Check{Generation: obj.Generation}
+	check := common_types.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(StsReady)
 	defer req.LogPostCheck(StsReady)

@@ -2,15 +2,15 @@ package acluser
 
 import (
 	"context"
-
+	"github.com/kloudlite/operator/apis/common-types"
 	redpandaMsvcv1 "github.com/kloudlite/operator/apis/redpanda.msvc/v1"
+	"github.com/kloudlite/operator/logging"
 	"github.com/kloudlite/operator/operators/msvc-redpanda/internal/env"
 	"github.com/kloudlite/operator/operators/msvc-redpanda/internal/types"
 	"github.com/kloudlite/operator/pkg/constants"
-	"github.com/kloudlite/operator/pkg/errors"
+	types2 "github.com/kloudlite/operator/pkg/errors"
 	fn "github.com/kloudlite/operator/pkg/functions"
 	"github.com/kloudlite/operator/pkg/kubectl"
-	"github.com/kloudlite/operator/pkg/logging"
 	rApi "github.com/kloudlite/operator/pkg/operator"
 	stepResult "github.com/kloudlite/operator/pkg/operator/step-result"
 	"github.com/kloudlite/operator/pkg/redpanda"
@@ -114,7 +114,7 @@ func (r *Reconciler) finalize(req *rApi.Request[*redpandaMsvcv1.ACLUser]) stepRe
 		return step
 	}
 
-	check := rApi.Check{Generation: obj.Generation}
+	check := common_types.Check{Generation: obj.Generation}
 
 	adminScrt, err := rApi.Get(ctx, r.Client, fn.NN(obj.Namespace, obj.Spec.AdminSecretRef.Name), &corev1.Secret{})
 	if err != nil {
@@ -145,7 +145,7 @@ func (r *Reconciler) finalize(req *rApi.Request[*redpandaMsvcv1.ACLUser]) stepRe
 
 func (r *Reconciler) reconAccessCreds(req *rApi.Request[*redpandaMsvcv1.ACLUser]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := rApi.Check{Generation: obj.Generation}
+	check := common_types.Check{Generation: obj.Generation}
 
 	adminScrt, err := rApi.Get(ctx, r.Client, fn.NN(obj.Namespace, obj.Spec.AdminSecretRef.Name), &corev1.Secret{})
 	if err != nil {
@@ -208,16 +208,16 @@ func (r *Reconciler) reconAccessCreds(req *rApi.Request[*redpandaMsvcv1.ACLUser]
 
 func (r *Reconciler) reconACLUser(req *rApi.Request[*redpandaMsvcv1.ACLUser]) stepResult.Result {
 	obj, checks := req.Object, req.Object.Status.Checks
-	check := rApi.Check{Generation: obj.Generation}
+	check := common_types.Check{Generation: obj.Generation}
 
 	adminCreds, ok := rApi.GetLocal[*types.AdminUserCreds](req, KeyAdminCreds)
 	if !ok {
-		return req.CheckFailed(RedpandaUserReady, check, errors.NotInLocals(KeyAdminCreds).Error()).Err(nil)
+		return req.CheckFailed(RedpandaUserReady, check, types2.NotInLocals(KeyAdminCreds).Error()).Err(nil)
 	}
 
 	aclUserCreds, ok := rApi.GetLocal[*types.ACLUserCreds](req, KeyAccessCreds)
 	if !ok {
-		return req.CheckFailed(RedpandaUserReady, check, errors.NotInLocals(KeyAccessCreds).Error()).Err(nil)
+		return req.CheckFailed(RedpandaUserReady, check, types2.NotInLocals(KeyAccessCreds).Error()).Err(nil)
 	}
 
 	adminCli := redpanda.NewAdminClient(adminCreds.AdminEndpoint, "", nil)

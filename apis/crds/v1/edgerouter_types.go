@@ -1,8 +1,8 @@
 package v1
 
 import (
+	"github.com/kloudlite/operator/apis/common-types"
 	"github.com/kloudlite/operator/pkg/constants"
-	rApi "github.com/kloudlite/operator/pkg/operator"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -32,8 +32,8 @@ type EdgeRouter struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   EdgeRouterSpec `json:"spec,omitempty"`
-	Status rApi.Status    `json:"status,omitempty"`
+	Spec   EdgeRouterSpec      `json:"spec,omitempty"`
+	Status common_types.Status `json:"status,omitempty"`
 }
 
 func (er *EdgeRouter) EnsureGVK() {
@@ -42,7 +42,7 @@ func (er *EdgeRouter) EnsureGVK() {
 	}
 }
 
-func (edge *EdgeRouter) GetStatus() *rApi.Status {
+func (edge *EdgeRouter) GetStatus() *common_types.Status {
 	return &edge.Status
 }
 

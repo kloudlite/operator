@@ -1,8 +1,8 @@
 package v1
 
 import (
+	"github.com/kloudlite/operator/apis/common-types"
 	"github.com/kloudlite/operator/pkg/constants"
-	rApi "github.com/kloudlite/operator/pkg/operator"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -21,8 +21,8 @@ type ClusterService struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   ClusterServiceSpec `json:"spec,omitempty"`
-	Status rApi.Status        `json:"status,omitempty"`
+	Spec   ClusterServiceSpec  `json:"spec,omitempty"`
+	Status common_types.Status `json:"status,omitempty"`
 }
 
 func (cs *ClusterService) EnsureGVK() {
@@ -31,7 +31,7 @@ func (cs *ClusterService) EnsureGVK() {
 	}
 }
 
-func (c *ClusterService) GetStatus() *rApi.Status {
+func (c *ClusterService) GetStatus() *common_types.Status {
 	return &c.Status
 }
 

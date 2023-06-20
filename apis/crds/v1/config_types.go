@@ -1,8 +1,8 @@
 package v1
 
 import (
+	"github.com/kloudlite/operator/apis/common-types"
 	"github.com/kloudlite/operator/pkg/constants"
-	rApi "github.com/kloudlite/operator/pkg/operator"
 	// corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -20,8 +20,8 @@ type Config struct {
 	Data map[string]string `json:"data,omitempty"`
 
 	// +kubebuilder:default=true
-	Enabled bool        `json:"enabled,omitempty"`
-	Status  rApi.Status `json:"status,omitempty"`
+	Enabled bool                `json:"enabled,omitempty"`
+	Status  common_types.Status `json:"status,omitempty"`
 }
 
 func (cfg *Config) EnsureGVK() {
@@ -30,7 +30,7 @@ func (cfg *Config) EnsureGVK() {
 	}
 }
 
-func (cfg *Config) GetStatus() *rApi.Status {
+func (cfg *Config) GetStatus() *common_types.Status {
 	return &cfg.Status
 }
 

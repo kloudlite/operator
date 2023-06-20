@@ -3,12 +3,13 @@ package controller
 import (
 	"context"
 	"fmt"
+	"github.com/kloudlite/operator/apis/common-types"
+	"github.com/kloudlite/operator/logging"
 	"time"
 
 	"github.com/kloudlite/operator/operators/byoc-operator/internal/env"
 	"github.com/kloudlite/operator/pkg/constants"
 	"github.com/kloudlite/operator/pkg/kubectl"
-	"github.com/kloudlite/operator/pkg/logging"
 	rApi "github.com/kloudlite/operator/pkg/operator"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
@@ -103,7 +104,7 @@ func (r *Reconciler) finalize(req *rApi.Request[*clusterv1.BYOC]) stepResult.Res
 
 func (r *Reconciler) ensureKafkaTopic(req *rApi.Request[*clusterv1.BYOC]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
-	check := rApi.Check{Generation: obj.Generation}
+	check := common_types.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(KafkaTopicExists)
 	defer req.LogPostCheck(KafkaTopicExists)
@@ -132,7 +133,7 @@ func (r *Reconciler) ensureKafkaTopic(req *rApi.Request[*clusterv1.BYOC]) stepRe
 		return req.CheckFailed(KafkaTopicExists, check, err.Error()).Err(nil)
 	}
 
-	req.AddToOwnedResources(rApi.ResourceRef{TypeMeta: kt.TypeMeta, Name: kt.Name, Namespace: kt.Namespace})
+	req.AddToOwnedResources(common_types.ResourceRef{TypeMeta: kt.TypeMeta, Name: kt.Name, Namespace: kt.Namespace})
 	req.UpdateStatus()
 
 	var kt2 redpandaMsvcv1.Topic

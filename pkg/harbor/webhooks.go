@@ -5,13 +5,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/kloudlite/operator/pkg/errors"
 	"io/ioutil"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/kloudlite/operator/pkg/errors"
 	hTypes "github.com/kloudlite/operator/pkg/harbor/internal/types"
 )
 

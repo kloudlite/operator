@@ -3,6 +3,8 @@ package secondary
 import (
 	"context"
 	v1 "github.com/kloudlite/operator/apis/cluster-setup/v1"
+	"github.com/kloudlite/operator/apis/common-types"
+	"github.com/kloudlite/operator/logging"
 	"github.com/kloudlite/operator/operators/cluster-setup/internal/env"
 	"github.com/kloudlite/operator/pkg/constants"
 	fn "github.com/kloudlite/operator/pkg/functions"
@@ -15,7 +17,6 @@ import (
 
 	"github.com/kloudlite/operator/pkg/harbor"
 	"github.com/kloudlite/operator/pkg/kubectl"
-	"github.com/kloudlite/operator/pkg/logging"
 	rApi "github.com/kloudlite/operator/pkg/operator"
 	stepResult "github.com/kloudlite/operator/pkg/operator/step-result"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -105,7 +106,7 @@ func (r *Reconciler) finalize(req *rApi.Request[*v1.SecondaryCluster]) stepResul
 
 func (r *Reconciler) patchDefaults(req *rApi.Request[*v1.SecondaryCluster]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := rApi.Check{Generation: obj.Generation}
+	check := common_types.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(DefaultsPatched)
 	defer req.LogPostCheck(DefaultsPatched)
@@ -138,7 +139,7 @@ func (r *Reconciler) patchDefaults(req *rApi.Request[*v1.SecondaryCluster]) step
 
 func (r *Reconciler) ensurePriorityClasses(req *rApi.Request[*v1.SecondaryCluster]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := rApi.Check{Generation: obj.Generation}
+	check := common_types.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(PriorityClassesReady)
 	defer req.LogPostCheck(PriorityClassesReady)

@@ -2,13 +2,10 @@ package v1
 
 import (
 	"fmt"
-
+	"github.com/kloudlite/operator/apis/common-types"
 	"github.com/kloudlite/operator/pkg/constants"
-	rApi "github.com/kloudlite/operator/pkg/operator"
-
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	rawJson "github.com/kloudlite/operator/pkg/raw-json"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type msvcNamedRefTT struct {
@@ -41,8 +38,8 @@ type ManagedResource struct {
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 	Spec              ManagedResourceSpec `json:"spec,omitempty"`
 	// +kubebuilder:default=true
-	Enabled *bool       `json:"enabled,omitempty"`
-	Status  rApi.Status `json:"status,omitempty"`
+	Enabled *bool               `json:"enabled,omitempty"`
+	Status  common_types.Status `json:"status,omitempty"`
 }
 
 func (m *ManagedResource) EnsureGVK() {
@@ -55,7 +52,7 @@ func (m *ManagedResource) NameRef() string {
 	return fmt.Sprintf("%s/%s/%s", m.GroupVersionKind().Group, m.Namespace, m.Name)
 }
 
-func (m *ManagedResource) GetStatus() *rApi.Status {
+func (m *ManagedResource) GetStatus() *common_types.Status {
 	return &m.Status
 }
 

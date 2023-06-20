@@ -3,16 +3,17 @@ package admin
 import (
 	"context"
 	"fmt"
+	"github.com/kloudlite/operator/apis/common-types"
+	"github.com/kloudlite/operator/logging"
+	types2 "github.com/kloudlite/operator/pkg/errors"
 	"time"
 
 	redpandaMsvcv1 "github.com/kloudlite/operator/apis/redpanda.msvc/v1"
 	"github.com/kloudlite/operator/operators/msvc-redpanda/internal/env"
 	"github.com/kloudlite/operator/operators/msvc-redpanda/internal/types"
 	"github.com/kloudlite/operator/pkg/constants"
-	"github.com/kloudlite/operator/pkg/errors"
 	fn "github.com/kloudlite/operator/pkg/functions"
 	"github.com/kloudlite/operator/pkg/kubectl"
-	"github.com/kloudlite/operator/pkg/logging"
 	rApi "github.com/kloudlite/operator/pkg/operator"
 	stepResult "github.com/kloudlite/operator/pkg/operator/step-result"
 	"github.com/kloudlite/operator/pkg/redpanda"
@@ -93,7 +94,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.
 
 func (r *Reconciler) finalize(req *rApi.Request[*redpandaMsvcv1.Admin]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
-	check := rApi.Check{Generation: obj.Generation}
+	check := common_types.Check{Generation: obj.Generation}
 
 	adminDeleted := "admin-deleted"
 
@@ -131,7 +132,7 @@ func (r *Reconciler) finalize(req *rApi.Request[*redpandaMsvcv1.Admin]) stepResu
 
 func (r *Reconciler) createAdminCreds(req *rApi.Request[*redpandaMsvcv1.Admin]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := rApi.Check{Generation: obj.Generation}
+	check := common_types.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(AccessCredsReady)
 	defer req.LogPostCheck(AccessCredsReady)
@@ -201,7 +202,7 @@ func (r *Reconciler) createAdminCreds(req *rApi.Request[*redpandaMsvcv1.Admin]) 
 
 func (r *Reconciler) createRedpandaAdmin(req *rApi.Request[*redpandaMsvcv1.Admin]) stepResult.Result {
 	obj, checks := req.Object, req.Object.Status.Checks
-	check := rApi.Check{Generation: obj.Generation}
+	check := common_types.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(RedpandaAdminReady)
 	defer req.LogPostCheck(RedpandaAdminReady)
@@ -212,7 +213,7 @@ func (r *Reconciler) createRedpandaAdmin(req *rApi.Request[*redpandaMsvcv1.Admin
 
 	adminCreds, ok := rApi.GetLocal[*types.AdminUserCreds](req, KeyAdminCreds)
 	if !ok {
-		return req.CheckFailed(RedpandaAdminReady, check, errors.NotInLocals(KeyAdminCreds).Error()).Err(nil)
+		return req.CheckFailed(RedpandaAdminReady, check, types2.NotInLocals(KeyAdminCreds).Error()).Err(nil)
 	}
 
 	adminExists := true
@@ -236,7 +237,7 @@ func (r *Reconciler) createRedpandaAdmin(req *rApi.Request[*redpandaMsvcv1.Admin
 			),
 		)
 		if err != nil {
-			return req.CheckFailed(RedpandaAdminReady, check, errors.NewEf(err, stderr.String()).Error()).Err(nil)
+			return req.CheckFailed(RedpandaAdminReady, check, types2.NewEf(err, stderr.String()).Error()).Err(nil)
 		}
 	}
 

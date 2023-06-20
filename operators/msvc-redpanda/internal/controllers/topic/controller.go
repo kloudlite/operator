@@ -2,6 +2,8 @@ package topic
 
 import (
 	"context"
+	"github.com/kloudlite/operator/apis/common-types"
+	types2 "github.com/kloudlite/operator/logging"
 	"github.com/kloudlite/operator/operators/msvc-redpanda/internal/types"
 	"time"
 
@@ -10,7 +12,6 @@ import (
 	"github.com/kloudlite/operator/pkg/constants"
 	fn "github.com/kloudlite/operator/pkg/functions"
 	"github.com/kloudlite/operator/pkg/kubectl"
-	"github.com/kloudlite/operator/pkg/logging"
 	rApi "github.com/kloudlite/operator/pkg/operator"
 	stepResult "github.com/kloudlite/operator/pkg/operator/step-result"
 	"github.com/kloudlite/operator/pkg/redpanda"
@@ -25,7 +26,7 @@ import (
 type Reconciler struct {
 	client.Client
 	Scheme     *runtime.Scheme
-	Logger     logging.Logger
+	Logger     types2.Logger
 	Name       string
 	Env        *env.Env
 	yamlClient *kubectl.YAMLClient
@@ -83,7 +84,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.
 func (r *Reconciler) finalize(req *rApi.Request[*redpandaMsvcv1.Topic]) stepResult.Result {
 	obj, checks := req.Object, req.Object.Status.Checks
 	topicDeleted := "topic-deleted"
-	check := rApi.Check{Generation: obj.Generation}
+	check := common_types.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(topicDeleted)
 	defer req.LogPostCheck(topicDeleted)
@@ -138,7 +139,7 @@ func (r *Reconciler) getAdminClient(req *rApi.Request[*redpandaMsvcv1.Topic]) (r
 
 func (r *Reconciler) reconRedpandaTopic(req *rApi.Request[*redpandaMsvcv1.Topic]) stepResult.Result {
 	obj, checks := req.Object, req.Object.Status.Checks
-	check := rApi.Check{Generation: obj.Generation}
+	check := common_types.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(RedpandaTopicReady)
 	defer req.LogPostCheck(RedpandaTopicReady)
@@ -171,7 +172,7 @@ func (r *Reconciler) reconRedpandaTopic(req *rApi.Request[*redpandaMsvcv1.Topic]
 	return req.Next()
 }
 
-func (r *Reconciler) SetupWithManager(mgr ctrl.Manager, logger logging.Logger) error {
+func (r *Reconciler) SetupWithManager(mgr ctrl.Manager, logger types2.Logger) error {
 	r.Client = mgr.GetClient()
 	r.Scheme = mgr.GetScheme()
 	r.Logger = logger.WithName(r.Name)

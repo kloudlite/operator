@@ -3,6 +3,8 @@ package byoc_client
 import (
 	"context"
 	"encoding/json"
+	"github.com/kloudlite/operator/apis/common-types"
+	"github.com/kloudlite/operator/logging"
 	"reflect"
 	"time"
 
@@ -21,7 +23,6 @@ import (
 
 	clusterv1 "github.com/kloudlite/operator/apis/clusters/v1"
 	"github.com/kloudlite/operator/operators/resource-watcher/internal/env"
-	"github.com/kloudlite/operator/pkg/logging"
 	rApi "github.com/kloudlite/operator/pkg/operator"
 	stepResult "github.com/kloudlite/operator/pkg/operator/step-result"
 )
@@ -87,7 +88,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.
 
 func (r *Reconciler) processStorageClasses(req *rApi.Request[*clusterv1.BYOC]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
-	check := rApi.Check{Generation: obj.Generation}
+	check := common_types.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(StorageClassProcessed)
 	defer req.LogPostCheck(StorageClassProcessed)
@@ -124,7 +125,7 @@ func (r *Reconciler) processStorageClasses(req *rApi.Request[*clusterv1.BYOC]) s
 
 func (r *Reconciler) processIngressClasses(req *rApi.Request[*clusterv1.BYOC]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
-	check := rApi.Check{Generation: obj.Generation}
+	check := common_types.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(IngressClassProcessed)
 	defer req.LogPostCheck(IngressClassProcessed)
@@ -158,7 +159,7 @@ func (r *Reconciler) processIngressClasses(req *rApi.Request[*clusterv1.BYOC]) s
 
 func (r *Reconciler) processNodes(req *rApi.Request[*clusterv1.BYOC]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
-	check := rApi.Check{Generation: obj.Generation}
+	check := common_types.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(NodesProcessed)
 	defer req.LogPostCheck(NodesProcessed)
@@ -196,7 +197,7 @@ func (r *Reconciler) processNodes(req *rApi.Request[*clusterv1.BYOC]) stepResult
 
 func (r *Reconciler) processHelmDeployments(req *rApi.Request[*clusterv1.BYOC]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
-	check := rApi.Check{Generation: obj.Generation}
+	check := common_types.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(HelmDeploymentsProcessed)
 	defer req.LogPostCheck(HelmDeploymentsProcessed)
@@ -209,7 +210,7 @@ func (r *Reconciler) processHelmDeployments(req *rApi.Request[*clusterv1.BYOC]) 
 	}
 
 	for i := range dl.Items {
-		check := rApi.Check{
+		check := common_types.Check{
 			Status: dl.Items[i].Status.Replicas == dl.Items[i].Status.ReadyReplicas,
 		}
 

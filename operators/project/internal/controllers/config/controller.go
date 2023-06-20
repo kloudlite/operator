@@ -2,7 +2,9 @@ package config
 
 import (
 	"context"
+	"github.com/kloudlite/operator/apis/common-types"
 	crdsv1 "github.com/kloudlite/operator/apis/crds/v1"
+	"github.com/kloudlite/operator/logging"
 	"github.com/kloudlite/operator/operators/project/internal/env"
 	"github.com/kloudlite/operator/pkg/constants"
 	fn "github.com/kloudlite/operator/pkg/functions"
@@ -13,7 +15,6 @@ import (
 	"time"
 
 	"github.com/kloudlite/operator/pkg/kubectl"
-	"github.com/kloudlite/operator/pkg/logging"
 	rApi "github.com/kloudlite/operator/pkg/operator"
 	stepResult "github.com/kloudlite/operator/pkg/operator/step-result"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -91,7 +92,7 @@ func (r *Reconciler) finalize(req *rApi.Request[*crdsv1.Config]) stepResult.Resu
 
 func (r *Reconciler) ensureConfigMap(req *rApi.Request[*crdsv1.Config]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := rApi.Check{Generation: obj.Generation}
+	check := common_types.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(CfgMapCreated)
 	defer req.LogPostCheck(CfgMapCreated)

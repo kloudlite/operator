@@ -1,9 +1,9 @@
 package v1
 
 import (
+	"github.com/kloudlite/operator/apis/common-types"
 	"github.com/kloudlite/operator/pkg/constants"
 	"github.com/kloudlite/operator/pkg/harbor"
-	rApi "github.com/kloudlite/operator/pkg/operator"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -23,8 +23,8 @@ type HarborProject struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   HarborProjectSpec `json:"spec,omitempty"`
-	Status rApi.Status       `json:"status,omitempty"`
+	Spec   HarborProjectSpec   `json:"spec,omitempty"`
+	Status common_types.Status `json:"status,omitempty"`
 }
 
 func (hp *HarborProject) EnsureGVK() {
@@ -33,7 +33,7 @@ func (hp *HarborProject) EnsureGVK() {
 	}
 }
 
-func (hp *HarborProject) GetStatus() *rApi.Status {
+func (hp *HarborProject) GetStatus() *common_types.Status {
 	return &hp.Status
 }
 

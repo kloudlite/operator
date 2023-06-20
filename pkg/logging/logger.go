@@ -2,7 +2,6 @@ package logging
 
 import (
 	"fmt"
-
 	"github.com/fatih/color"
 	"github.com/kloudlite/operator/pkg/errors"
 	"go.uber.org/zap"

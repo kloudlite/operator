@@ -5,12 +5,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/kloudlite/operator/pkg/errors"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"strings"
 
-	"github.com/kloudlite/operator/pkg/errors"
 	hTypes "github.com/kloudlite/operator/pkg/harbor/internal/types"
 )
 
@@ -22,6 +22,7 @@ type User struct {
 
 // +kubebuilder:validation:Enum=push-repository;pull-repository
 type Permission string
+
 const (
 	PushRepository Permission = "push-repository"
 	PullRepository Permission = "pull-repository"

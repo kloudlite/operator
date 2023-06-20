@@ -3,7 +3,6 @@ package v1
 import (
 	ct "github.com/kloudlite/operator/apis/common-types"
 	"github.com/kloudlite/operator/pkg/constants"
-	rApi "github.com/kloudlite/operator/pkg/operator"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -27,7 +26,7 @@ type Database struct {
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	Spec   DatabaseSpec `json:"spec,omitempty"`
-	Status rApi.Status  `json:"status,omitempty"`
+	Status ct.Status    `json:"status,omitempty"`
 }
 
 func (db *Database) EnsureGVK() {
@@ -36,7 +35,7 @@ func (db *Database) EnsureGVK() {
 	}
 }
 
-func (d *Database) GetStatus() *rApi.Status {
+func (d *Database) GetStatus() *ct.Status {
 	return &d.Status
 }
 

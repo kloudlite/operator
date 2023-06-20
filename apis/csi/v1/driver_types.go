@@ -1,8 +1,8 @@
 package v1
 
 import (
+	"github.com/kloudlite/operator/apis/common-types"
 	"github.com/kloudlite/operator/pkg/constants"
-	rApi "github.com/kloudlite/operator/pkg/operator"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -25,11 +25,11 @@ type Driver struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   DriverSpec  `json:"spec,omitempty"`
-	Status rApi.Status `json:"status,omitempty"`
+	Spec   DriverSpec          `json:"spec,omitempty"`
+	Status common_types.Status `json:"status,omitempty"`
 }
 
-func (d *Driver) GetStatus() *rApi.Status {
+func (d *Driver) GetStatus() *common_types.Status {
 	return &d.Status
 }
 

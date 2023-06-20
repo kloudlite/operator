@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	types2 "github.com/kloudlite/operator/logging"
 	"time"
 
 	ct "github.com/kloudlite/operator/apis/common-types"
@@ -13,7 +14,6 @@ import (
 	"github.com/kloudlite/operator/pkg/conditions"
 	"github.com/kloudlite/operator/pkg/constants"
 	fn "github.com/kloudlite/operator/pkg/functions"
-	"github.com/kloudlite/operator/pkg/logging"
 	rApi "github.com/kloudlite/operator/pkg/operator"
 	stepResult "github.com/kloudlite/operator/pkg/operator/step-result"
 	"github.com/kloudlite/operator/pkg/templates"
@@ -33,7 +33,7 @@ import (
 type Reconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
-	logger logging.Logger
+	logger types2.Logger
 	Name   string
 	Env    *env.Env
 }
@@ -125,7 +125,7 @@ func (r *Reconciler) finalize(req *rApi.Request[*neo4jMsvcv1.StandaloneService])
 func (r *Reconciler) reconAccessCreds(req *rApi.Request[*neo4jMsvcv1.StandaloneService]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
 
-	check := rApi.Check{Generation: obj.Generation}
+	check := ct.Check{Generation: obj.Generation}
 	secretName := "msvc-" + obj.Name
 	scrt, err := rApi.Get(ctx, r.Client, fn.NN(obj.Namespace, secretName), &corev1.Secret{})
 	if err != nil {
@@ -188,7 +188,7 @@ func (r *Reconciler) reconAccessCreds(req *rApi.Request[*neo4jMsvcv1.StandaloneS
 
 func (r *Reconciler) reconHelm(req *rApi.Request[*neo4jMsvcv1.StandaloneService]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := rApi.Check{Generation: obj.Generation}
+	check := ct.Check{Generation: obj.Generation}
 
 	helmRes, err := rApi.Get(
 		ctx, r.Client, fn.NN(obj.Namespace, obj.Name), fn.NewUnstructured(constants.HelmNeo4JStandaloneType),
@@ -255,7 +255,7 @@ func (r *Reconciler) reconHelm(req *rApi.Request[*neo4jMsvcv1.StandaloneService]
 
 func (r *Reconciler) reconSts(req *rApi.Request[*neo4jMsvcv1.StandaloneService]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := rApi.Check{Generation: obj.Generation}
+	check := ct.Check{Generation: obj.Generation}
 	var stsList appsv1.StatefulSetList
 
 	if err := r.List(
@@ -305,7 +305,7 @@ func (r *Reconciler) reconSts(req *rApi.Request[*neo4jMsvcv1.StandaloneService])
 	return req.Next()
 }
 
-func (r *Reconciler) SetupWithManager(mgr ctrl.Manager, logger logging.Logger) error {
+func (r *Reconciler) SetupWithManager(mgr ctrl.Manager, logger types2.Logger) error {
 	r.Client = mgr.GetClient()
 	r.Scheme = mgr.GetScheme()
 	r.logger = logger.WithName(r.Name)

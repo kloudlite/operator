@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/kloudlite/operator/logging"
+	types2 "github.com/kloudlite/operator/pkg/errors"
 	"time"
 
 	"github.com/kloudlite/operator/pkg/kubectl"
@@ -15,10 +17,8 @@ import (
 	"github.com/kloudlite/operator/operators/msvc-redis/internal/types"
 	"github.com/kloudlite/operator/pkg/conditions"
 	"github.com/kloudlite/operator/pkg/constants"
-	"github.com/kloudlite/operator/pkg/errors"
 	fn "github.com/kloudlite/operator/pkg/functions"
 	"github.com/kloudlite/operator/pkg/harbor"
-	"github.com/kloudlite/operator/pkg/logging"
 	rApi "github.com/kloudlite/operator/pkg/operator"
 	stepResult "github.com/kloudlite/operator/pkg/operator/step-result"
 	"github.com/kloudlite/operator/pkg/templates"
@@ -132,7 +132,7 @@ func (r *ServiceReconciler) finalize(req *rApi.Request[*redisMsvcv1.StandaloneSe
 
 func (r *ServiceReconciler) reconACLConfigmap(req *rApi.Request[*redisMsvcv1.StandaloneService]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
-	check := rApi.Check{Generation: obj.Generation}
+	check := ct.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(ACLConfigMapReady)
 	defer req.LogPostCheck(ACLConfigMapReady)
@@ -191,7 +191,7 @@ func (r *ServiceReconciler) reconACLConfigmap(req *rApi.Request[*redisMsvcv1.Sta
 
 func (r *ServiceReconciler) reconAccessCreds(req *rApi.Request[*redisMsvcv1.StandaloneService]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
-	check := rApi.Check{Generation: obj.Generation}
+	check := ct.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(AccessCredsReady)
 	defer req.LogPostCheck(AccessCredsReady)
@@ -253,7 +253,7 @@ func (r *ServiceReconciler) reconAccessCreds(req *rApi.Request[*redisMsvcv1.Stan
 
 func (r *ServiceReconciler) reconHelm(req *rApi.Request[*redisMsvcv1.StandaloneService]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
-	check := rApi.Check{Generation: obj.Generation}
+	check := ct.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(HelmReady)
 	defer req.LogPostCheck(HelmReady)
@@ -270,11 +270,11 @@ func (r *ServiceReconciler) reconHelm(req *rApi.Request[*redisMsvcv1.StandaloneS
 
 	msvcOutput, ok := rApi.GetLocal[types.MsvcOutput](req, KeyMsvcOutput)
 	if !ok {
-		return req.CheckFailed(HelmReady, check, errors.NotInLocals(KeyRootPassword).Error())
+		return req.CheckFailed(HelmReady, check, types2.NotInLocals(KeyRootPassword).Error())
 	}
 	aclConfigmapName, ok := rApi.GetLocal[string](req, KeyAclConfigMapName)
 	if !ok {
-		return req.CheckFailed(HelmReady, check, errors.NotInLocals(KeyAclConfigMapName).Error())
+		return req.CheckFailed(HelmReady, check, types2.NotInLocals(KeyAclConfigMapName).Error())
 	}
 
 	sc := func() string {
@@ -335,7 +335,7 @@ func getStsName(objName string) string {
 
 func (r *ServiceReconciler) reconSts(req *rApi.Request[*redisMsvcv1.StandaloneService]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
-	check := rApi.Check{Generation: obj.Generation}
+	check := ct.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(StsReady)
 	defer req.LogPostCheck(StsReady)

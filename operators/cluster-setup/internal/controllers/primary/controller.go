@@ -10,6 +10,7 @@ import (
 	ct "github.com/kloudlite/operator/apis/common-types"
 	crdsv1 "github.com/kloudlite/operator/apis/crds/v1"
 	redpandaMsvcv1 "github.com/kloudlite/operator/apis/redpanda.msvc/v1"
+	"github.com/kloudlite/operator/logging"
 	"io"
 	schedulingv1 "k8s.io/api/scheduling/v1"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
@@ -28,7 +29,6 @@ import (
 	"github.com/kloudlite/operator/pkg/harbor"
 	kHttp "github.com/kloudlite/operator/pkg/http"
 	"github.com/kloudlite/operator/pkg/kubectl"
-	"github.com/kloudlite/operator/pkg/logging"
 	rApi "github.com/kloudlite/operator/pkg/operator"
 	stepResult "github.com/kloudlite/operator/pkg/operator/step-result"
 	"github.com/mittwald/go-helm-client"
@@ -246,7 +246,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.
 
 func (r *Reconciler) patchDefaults(req *rApi.Request[*v1.PrimaryCluster]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := rApi.Check{Generation: obj.Generation}
+	check := ct.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(DefaultsPatched)
 	defer req.LogPostCheck(DefaultsPatched)
@@ -393,7 +393,7 @@ func (r *Reconciler) finalize(req *rApi.Request[*v1.PrimaryCluster]) stepResult.
 
 func (r *Reconciler) ensureNamespaces(req *rApi.Request[*v1.PrimaryCluster]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := rApi.Check{Generation: obj.Generation}
+	check := ct.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(NamespacesReady)
 	defer req.LogPostCheck(NamespacesReady)
@@ -433,7 +433,7 @@ func (r *Reconciler) ensureNamespaces(req *rApi.Request[*v1.PrimaryCluster]) ste
 
 func (r *Reconciler) ensureHarborAdminCreds(req *rApi.Request[*v1.PrimaryCluster]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := rApi.Check{Generation: obj.Generation}
+	check := ct.Check{Generation: obj.Generation}
 
 	harborCreds, err := rApi.Get(ctx, r.Client, fn.NN(obj.Spec.HarborAdminCreds.Namespace, obj.Spec.HarborAdminCreds.Name), &corev1.Secret{})
 	if err != nil {
@@ -465,7 +465,7 @@ func (r *Reconciler) ensureHarborAdminCreds(req *rApi.Request[*v1.PrimaryCluster
 
 func (r *Reconciler) ensureSvcAccounts(req *rApi.Request[*v1.PrimaryCluster]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := rApi.Check{Generation: obj.Generation}
+	check := ct.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(SvcAccountsReady)
 	defer req.LogPostCheck(SvcAccountsReady)
@@ -555,7 +555,7 @@ func (r *Reconciler) ensureSvcAccounts(req *rApi.Request[*v1.PrimaryCluster]) st
 
 func (r *Reconciler) ensureLoki(req *rApi.Request[*v1.PrimaryCluster]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := rApi.Check{Generation: obj.Generation}
+	check := ct.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(LokiReady)
 	defer req.LogPostCheck(LokiReady)
@@ -605,7 +605,7 @@ func (r *Reconciler) ensureLoki(req *rApi.Request[*v1.PrimaryCluster]) stepResul
 
 func (r *Reconciler) ensurePrometheus(req *rApi.Request[*v1.PrimaryCluster]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := rApi.Check{Generation: obj.Generation}
+	check := ct.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(PrometheusReady)
 	defer req.LogPostCheck(PrometheusReady)
@@ -656,7 +656,7 @@ func (r *Reconciler) ensurePrometheus(req *rApi.Request[*v1.PrimaryCluster]) ste
 
 func (r *Reconciler) ensureGrafana(req *rApi.Request[*v1.PrimaryCluster]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := rApi.Check{Generation: obj.Generation}
+	check := ct.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(GrafanaReady)
 	defer req.LogPostCheck(GrafanaReady)
@@ -706,7 +706,7 @@ func (r *Reconciler) ensureGrafana(req *rApi.Request[*v1.PrimaryCluster]) stepRe
 
 func (r *Reconciler) ensureRedpanda(req *rApi.Request[*v1.PrimaryCluster]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := rApi.Check{Generation: obj.Generation}
+	check := ct.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(GrafanaReady)
 	defer req.LogPostCheck(GrafanaReady)
@@ -819,7 +819,7 @@ func (r *Reconciler) ensureRedpanda(req *rApi.Request[*v1.PrimaryCluster]) stepR
 
 func (r *Reconciler) ensureCertManager(req *rApi.Request[*v1.PrimaryCluster]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := rApi.Check{Generation: obj.Generation}
+	check := ct.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(CertManagerReady)
 	defer req.LogPostCheck(CertManagerReady)
@@ -869,7 +869,7 @@ func (r *Reconciler) ensureCertManager(req *rApi.Request[*v1.PrimaryCluster]) st
 
 func (r *Reconciler) ensureIngressNginx(req *rApi.Request[*v1.PrimaryCluster]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := rApi.Check{Generation: obj.Generation}
+	check := ct.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(IngressReady)
 	defer req.LogPostCheck(IngressReady)
@@ -923,7 +923,7 @@ func (r *Reconciler) ensureIngressNginx(req *rApi.Request[*v1.PrimaryCluster]) s
 
 func (r *Reconciler) ensureCertIssuer(req *rApi.Request[*v1.PrimaryCluster]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := rApi.Check{Generation: obj.Generation}
+	check := ct.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(CertIssuerReady)
 	defer req.LogPostCheck(CertIssuerReady)
@@ -1000,7 +1000,7 @@ func (r *Reconciler) ensureCertIssuer(req *rApi.Request[*v1.PrimaryCluster]) ste
 
 func (r *Reconciler) ensureOperatorCRDs(req *rApi.Request[*v1.PrimaryCluster]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := rApi.Check{Generation: obj.Generation}
+	check := ct.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(OperatorCRDsReady)
 	defer req.LogPostCheck(OperatorCRDsReady)
@@ -1084,7 +1084,7 @@ func (r *Reconciler) ensureOperatorCRDs(req *rApi.Request[*v1.PrimaryCluster]) s
 func (r *Reconciler) ensureOperators(req *rApi.Request[*v1.PrimaryCluster]) stepResult.Result {
 	// operator, helm-operator and internal-operator
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := rApi.Check{Generation: obj.Generation}
+	check := ct.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(OperatorsEnvReady)
 	defer req.LogPostCheck(OperatorsEnvReady)
@@ -1179,7 +1179,7 @@ func (r *Reconciler) ensureOperators(req *rApi.Request[*v1.PrimaryCluster]) step
 
 func (r *Reconciler) ensureRedpandaTopics(req *rApi.Request[*v1.PrimaryCluster]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := rApi.Check{Generation: obj.Generation}
+	check := ct.Check{Generation: obj.Generation}
 
 	topics := []string{
 		obj.Spec.SharedConstants.KafkaTopicGitWebhooks,
@@ -1218,7 +1218,7 @@ func (r *Reconciler) ensureRedpandaTopics(req *rApi.Request[*v1.PrimaryCluster])
 
 func (r *Reconciler) ensureMsvcAndMres(req *rApi.Request[*v1.PrimaryCluster]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := rApi.Check{Generation: obj.Generation}
+	check := ct.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(MsvcAndMresReady)
 	defer req.LogPostCheck(MsvcAndMresReady)
@@ -1282,7 +1282,7 @@ func (r *Reconciler) ensureMsvcAndMres(req *rApi.Request[*v1.PrimaryCluster]) st
 
 func (r *Reconciler) ensureKloudliteApis(req *rApi.Request[*v1.PrimaryCluster]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := rApi.Check{Generation: obj.Generation}
+	check := ct.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(KloudliteAPIsReady)
 	defer req.LogPostCheck(KloudliteAPIsReady)
@@ -1354,7 +1354,7 @@ func (r *Reconciler) ensureKloudliteApis(req *rApi.Request[*v1.PrimaryCluster]) 
 
 func (r *Reconciler) ensureKloudliteWebs(req *rApi.Request[*v1.PrimaryCluster]) stepResult.Result {
 	_, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
-	check := rApi.Check{Generation: obj.Generation}
+	check := ct.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(KloudliteWebReady)
 	defer req.LogPostCheck(KloudliteWebReady)
