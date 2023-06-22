@@ -27,7 +27,7 @@ type OnDemandSpecs struct {
 }
 
 type AWSNodeConfig struct {
-	NadeName      *string        `json:"nodeName"`
+	NodeName      *string        `json:"nodeName"`
 	OnDemandSpecs *OnDemandSpecs `json:"onDemandSpecs"`
 	SpotSpecs     *SpotSpecs     `json:"spotSpecs"`
 	VPC           *string        `json:"vpc"`
