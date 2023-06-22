@@ -7,14 +7,53 @@ import (
 	rApi "github.com/kloudlite/operator/pkg/operator"
 )
 
+type ProvisionMode string
+
+const (
+	ProvisionModeOnDemand ProvisionMode = "on-demand"
+	ProvisionModeSpot     ProvisionMode = "spot"
+	ProvisionModeReserved ProvisionMode = "reserved"
+)
+
+type SpotSpecs struct {
+	CpuMin int `json:"cpuMin"`
+	CpuMax int `json:"cpuMax"`
+	MemMin int `json:"memMin"`
+	MemMax int `json:"memMax"`
+}
+
+type OnDemandSpecs struct {
+	InstanceType string `json:"instanceType"`
+}
+
+type AWSNodeConfig struct {
+	NadeName      *string        `json:"nodeName"`
+	OnDemandSpecs *OnDemandSpecs `json:"onDemandSpecs"`
+	SpotSpecs     *SpotSpecs     `json:"spotSpecs"`
+	VPC           *string        `json:"vpc"`
+	Region        *string        `json:"region"`
+	ImageId       *string        `json:"imageId"`
+	IsGpu         *bool          `json:"isGpu"`
+	ProvisionMode ProvisionMode  `json:"provisionMode" enum:"on-demand;spot;reserved;"`
+}
+
+type CloudProvider string
+
+const (
+	CloudProviderAWS CloudProvider = "aws"
+	CloudProviderGCP CloudProvider = "gcp"
+)
+
 // NodePoolSpec defines the desired state of NodePool
 type NodePoolSpec struct {
 	MaxCount    int `json:"maxCount"`
 	MinCount    int `json:"minCount"`
 	TargetCount int `json:"targetCount"`
 
+	AWSNodeConfig *AWSNodeConfig `jons:"awsNodeConfig"`
+
 	// aws -> CloudProvider
-	NodeConfig string `json:"nodeConfig"`
+	// NodeConfig string `json:"nodeConfig"`
 
 	// IsStateful bool `json:"isStateful,omitempty"`
 
