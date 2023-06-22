@@ -51,28 +51,7 @@ type NodePoolSpec struct {
 	TargetCount int `json:"targetCount"`
 
 	AWSNodeConfig *AWSNodeConfig `jons:"awsNodeConfig"`
-
-	// aws -> CloudProvider
-	// NodeConfig string `json:"nodeConfig"`
-
-	// IsStateful bool `json:"isStateful,omitempty"`
-
-	// aws secrets
-	// account name
 }
-
-// node auto scaler -> del, create
-// 4
-
-// clusters.kloudlite.io/node
-/*
-provier secret
-accountId
-node name
-node type(cluster, secondary-master, worker)
-node config
-
-*/
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
