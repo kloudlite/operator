@@ -7,33 +7,52 @@ import (
 	rApi "github.com/kloudlite/operator/pkg/operator"
 )
 
-// NodePoolSpec defines the desired state of NodePool
-type NodePoolSpec struct {
-	MaxCount    int `json:"maxCount"`
-	MinCount    int `json:"minCount"`
-	TargetCount int `json:"targetCount"`
+type ProvisionMode string
 
-	// aws -> CloudProvider
-	NodeConfig string `json:"nodeConfig"`
+const (
+	ProvisionModeOnDemand ProvisionMode = "on-demand"
+	ProvisionModeSpot     ProvisionMode = "spot"
+	ProvisionModeReserved ProvisionMode = "reserved"
+)
 
-	// IsStateful bool `json:"isStateful,omitempty"`
-
-	// aws secrets
-	// account name
+type SpotSpecs struct {
+	// +kubebuilder:validation:Minimum=0
+	CpuMin int `json:"cpuMin"`
+	// +kubebuilder:validation:Minimum=0
+	CpuMax int `json:"cpuMax"`
+	// +kubebuilder:validation:Minimum=0
+	MemMin int `json:"memMin"`
+	// +kubebuilder:validation:Minimum=0
+	MemMax int `json:"memMax"`
 }
 
-// node auto scaler -> del, create
-// 4
+type OnDemandSpecs struct {
+	InstanceType string `json:"instanceType"`
+}
 
-// clusters.kloudlite.io/node
-/*
-provier secret
-accountId
-node name
-node type(cluster, secondary-master, worker)
-node config
+type AWSNodeConfig struct {
+	NodeName      string         `json:"nodeName"`
+	OnDemandSpecs *OnDemandSpecs `json:"onDemandSpecs,omitempty"`
+	SpotSpecs     *SpotSpecs     `json:"spotSpecs,omitempty"`
+	VPC           *string        `json:"vpc,omitempty"`
+	Region        *string        `json:"region,omitempty"`
+	ImageId       string         `json:"imageId"`
+	IsGpu         bool           `json:"isGpu,omitempty"`
+	// +kubebuilder:validation:Enum=on-demand;spot;reserved;
+	ProvisionMode ProvisionMode `json:"provisionMode"`
+}
 
-*/
+// NodePoolSpec defines the desired state of NodePool
+type NodePoolSpec struct {
+	// +kubebuilder:validation:Minimum=0
+	MaxCount int `json:"maxCount"`
+	// +kubebuilder:validation:Minimum=0
+	MinCount int `json:"minCount"`
+	// +kubebuilder:validation:Minimum=0
+	TargetCount int `json:"targetCount"`
+
+	AWSNodeConfig *AWSNodeConfig `json:"awsNodeConfig,omitempty"`
+}
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
@@ -59,12 +78,14 @@ func (n *NodePool) GetStatus() *rApi.Status {
 }
 
 func (n *NodePool) GetEnsuredLabels() map[string]string {
-	return map[string]string{}
+	return map[string]string{
+		constants.NodePoolKey: n.Name,
+	}
 }
 
 func (n *NodePool) GetEnsuredAnnotations() map[string]string {
 	return map[string]string{
-		constants.GVKKey: GroupVersion.WithKind("BYOC").String(),
+		constants.GVKKey: GroupVersion.WithKind("NodePool").String(),
 	}
 }
 

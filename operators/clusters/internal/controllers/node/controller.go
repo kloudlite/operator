@@ -169,6 +169,7 @@ func (r *Reconciler) finalize(req *rApi.Request[*clustersv1.Node]) stepResult.Re
 		if err := createDeleteNodeJob(); err != nil {
 			return failed(err)
 		}
+		return req.Done()
 	}
 
 	if j.Status.Succeeded >= 1 {
