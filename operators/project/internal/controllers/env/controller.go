@@ -91,11 +91,6 @@ func (r *Reconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.
 	}
 
 	req.Object.Status.IsReady = true
-	req.Object.Status.Resources = req.GetOwnedResources()
-	if err := r.Status().Update(ctx, req.Object); err != nil {
-		return ctrl.Result{}, err
-	}
-
 	return ctrl.Result{RequeueAfter: r.Env.ReconcilePeriod}, nil
 }
 
@@ -246,7 +241,7 @@ func (r *Reconciler) ensureRoutingFromProject(req *rApi.Request[*crdsv1.Env]) st
 		}
 
 		req.AddToOwnedResources(rApi.ResourceRef{
-			TypeMeta: router.TypeMeta,
+			TypeMeta:  router.TypeMeta,
 			Namespace: localRouter.Namespace,
 			Name:      localRouter.Name,
 		})

@@ -5,14 +5,14 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.8.0
   creationTimestamp: null
-  name: envs.crds.kloudlite.io
+  name: workspaces.crds.kloudlite.io
 spec:
   group: crds.kloudlite.io
   names:
-    kind: Env
-    listKind: EnvList
-    plural: envs
-    singular: env
+    kind: Workspace
+    listKind: WorkspaceList
+    plural: workspaces
+    singular: workspace
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
@@ -31,7 +31,7 @@ spec:
     name: v1
     schema:
       openAPIV3Schema:
-        description: Env is the Schema for the envs API
+        description: Workspace is the Schema for the envs API
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
