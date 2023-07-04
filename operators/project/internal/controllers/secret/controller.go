@@ -2,14 +2,15 @@ package secret
 
 import (
 	"context"
+
 	crdsv1 "github.com/kloudlite/operator/apis/crds/v1"
 	"github.com/kloudlite/operator/operators/project/internal/env"
 	"github.com/kloudlite/operator/pkg/constants"
 	fn "github.com/kloudlite/operator/pkg/functions"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"time"
 
 	"github.com/kloudlite/operator/pkg/kubectl"
 	"github.com/kloudlite/operator/pkg/logging"
@@ -47,6 +48,9 @@ func (r *Reconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
+	req.LogPreReconcile()
+	defer req.LogPostReconcile()
+
 	if req.Object.GetDeletionTimestamp() != nil {
 		if x := r.finalize(req); !x.ShouldProceed() {
 			return x.ReconcilerResponse()
@@ -54,18 +58,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.
 		return ctrl.Result{}, nil
 	}
 
-	req.LogPreReconcile()
-	defer req.LogPostReconcile()
-
 	if step := req.ClearStatusIfAnnotated(); !step.ShouldProceed() {
-		return step.ReconcilerResponse()
-	}
-
-	if step := req.RestartIfAnnotated(); !step.ShouldProceed() {
-		return step.ReconcilerResponse()
-	}
-
-	if step := req.EnsureChecks(K8sSecretCreated); !step.ShouldProceed() {
 		return step.ReconcilerResponse()
 	}
 
@@ -82,8 +75,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.
 	}
 
 	req.Object.Status.IsReady = true
-	req.Object.Status.LastReconcileTime = &metav1.Time{Time: time.Now()}
-	return ctrl.Result{RequeueAfter: r.Env.ReconcilePeriod}, r.Status().Update(ctx, req.Object)
+	return ctrl.Result{RequeueAfter: r.Env.ReconcilePeriod}, nil
 }
 
 func (r *Reconciler) finalize(req *rApi.Request[*crdsv1.Secret]) stepResult.Result {
@@ -100,7 +92,7 @@ func (r *Reconciler) ensureSecret(req *rApi.Request[*crdsv1.Secret]) stepResult.
 	scrt := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: obj.Name, Namespace: obj.Namespace}, Type: obj.Type}
 	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, scrt, func() error {
 		if !fn.IsOwner(scrt, fn.AsOwner(obj)) {
-			scrt.SetOwnerReferences(append(scrt.GetOwnerReferences(), fn.AsOwner(obj, true)))
+			scrt.SetOwnerReferences([]metav1.OwnerReference{fn.AsOwner(obj, true)})
 		}
 		scrt.Labels = obj.Labels
 		scrt.Data = obj.Data
@@ -125,6 +117,8 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager, logger logging.Logger) e
 	r.yamlClient = kubectl.NewYAMLClientOrDie(mgr.GetConfig())
 
 	builder := ctrl.NewControllerManagedBy(mgr).For(&crdsv1.Secret{})
+	builder.Owns(&corev1.Secret{})
+	builder.WithOptions(controller.Options{MaxConcurrentReconciles: r.Env.MaxConcurrentReconciles})
 	builder.WithEventFilter(rApi.ReconcileFilter())
 	return builder.Complete(r)
 }

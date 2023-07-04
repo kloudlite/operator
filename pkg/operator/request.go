@@ -399,6 +399,17 @@ func (r *Request[T]) LogPreReconcile() {
 
 func (r *Request[T]) LogPostReconcile() {
 	tDiff := time.Since(r.reconStartTime).Seconds()
+
+	r.Object.GetStatus().LastReconcileTime = &metav1.Time{Time: time.Now()}
+	r.Object.GetStatus().Resources = r.GetOwnedResources()
+
+	defer func() {
+		if err := r.client.Status().Update(r.Context(), r.Object); err != nil {
+			red := color.New(color.FgHiRed, color.Bold).SprintFunc()
+			r.internalLogger.Infof(red("[end] (took: %.2fs) reconcilation in progress, as status update failed"), tDiff)
+		}
+	}()
+
 	if !r.Object.GetStatus().IsReady {
 		yellow := color.New(color.FgHiYellow, color.Bold).SprintFunc()
 		r.internalLogger.Infof(yellow("[end] (took: %.2fs) reconcilation in progress"), tDiff)
