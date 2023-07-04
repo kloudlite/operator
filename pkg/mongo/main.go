@@ -19,12 +19,16 @@ var (
 	ErrNotConnected = fmt.Errorf("is not connected to db yet, call Connect() method")
 )
 
-func NewClient(uri string) (*Client, error) {
+func newClient(uri string) (*Client, error) {
 	cli, err := mongo.NewClient(options.Client().ApplyURI(uri))
 	if err != nil {
 		return nil, errors.NewEf(err, "could not create mongodb client")
 	}
 	return &Client{conn: cli}, nil
+}
+
+func NewClient(uri string) (*Client, error) {
+	return newClient(uri)
 }
 
 func (c *Client) Connect(ctx context.Context) error {
@@ -47,7 +51,7 @@ func (c *Client) UpsertUser(ctx context.Context, dbName string, userName string,
 		return ErrNotConnected
 	}
 
-	if v, _ := c.userExists(ctx, "", userName); v {
+	if v, _ := c.userExists(ctx, dbName, userName); v {
 		return nil
 	}
 
@@ -68,6 +72,30 @@ func (c *Client) UpsertUser(ctx context.Context, dbName string, userName string,
 	).Decode(&user)
 	if err != nil {
 		return errors.NewEf(err, "could not create user")
+	}
+	return nil
+}
+
+func (c *Client) UpdateUserPassword(ctx context.Context, dbName string, userName string, newPassword string) error {
+	if !c.isConnected {
+		return ErrNotConnected
+	}
+
+	if v, _ := c.userExists(ctx, dbName, userName); !v {
+		return nil
+	}
+
+	db := c.conn.Database(dbName)
+
+	var user bson.M
+	err := db.RunCommand(
+		ctx, bson.D{
+			{Key: "updateUser", Value: userName},
+			{Key: "pwd", Value: newPassword},
+		},
+	).Decode(&user)
+	if err != nil {
+		return errors.NewEf(err, "could not update user password")
 	}
 	return nil
 }
@@ -109,4 +137,21 @@ func (c *Client) userExists(ctx context.Context, dbName string, userName string)
 	}
 
 	return len(usersInfo.Users) > 0, nil
+}
+
+func CheckIfValidAuth(ctx context.Context, authenticatedUri string) error {
+	cli, err := newClient(authenticatedUri)
+	defer cli.Close()
+	if err != nil {
+		return err
+	}
+
+	if err := cli.conn.Connect(ctx); err != nil {
+		return errors.NewEf(err, "could not connect to specified mongodb service")
+	}
+	if err := cli.conn.Ping(ctx, &readpref.ReadPref{}); err != nil {
+		return errors.NewEf(err, "could not ping mongodb")
+	}
+
+	return nil
 }

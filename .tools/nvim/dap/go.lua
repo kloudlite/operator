@@ -139,8 +139,9 @@ dap.configurations.go = {
     args = { "--dev" },
     console = "externalTerminal",
     -- externalTerminal = true,
-    envFile = {
-      vim.g.root_dir .. "/operators/msvc-mongo" .. "/.secrets/env",
+    env = {
+      RECONCILE_PERIOD = "30s",
+      MAX_CONCURRENT_RECONCILES = "1",
     },
   },
   {
@@ -153,6 +154,19 @@ dap.configurations.go = {
     -- externalTerminal = true,
     envFile = {
       vim.g.root_dir .. "/operators/clusters" .. "/.secrets/env",
+    },
+  },
+  {
+    type = "go",
+    name = "Debug msvc-redpanda",
+    request = "launch",
+    program = vim.g.root_dir .. "/operators/msvc-redpanda",
+    args = { "--dev" },
+    console = "externalTerminal",
+    -- externalTerminal = true,
+    env = {
+      RECONCILE_PERIOD = "30s",
+      MAX_CONCURRENT_RECONCILES = "1",
     },
   },
 }
