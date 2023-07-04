@@ -3,6 +3,8 @@ package mongo
 import (
 	"context"
 	"fmt"
+	"strings"
+
 	"github.com/kloudlite/operator/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -139,7 +141,7 @@ func (c *Client) userExists(ctx context.Context, dbName string, userName string)
 	return len(usersInfo.Users) > 0, nil
 }
 
-func CheckIfValidAuth(ctx context.Context, authenticatedUri string) error {
+func ConnectAndPing(ctx context.Context, authenticatedUri string) error {
 	cli, err := newClient(authenticatedUri)
 	defer cli.Close()
 	if err != nil {
@@ -154,4 +156,11 @@ func CheckIfValidAuth(ctx context.Context, authenticatedUri string) error {
 	}
 
 	return nil
+}
+
+func FailsWithAuthError(err error) bool {
+	if err != nil {
+		return strings.Contains(err.Error(), "(AuthenticationFailed)")
+	}
+	return false
 }

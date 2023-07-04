@@ -214,14 +214,17 @@ func (r *Reconciler) reconDBCreds(req *rApi.Request[*mongodbMsvcv1.Database]) st
 
 	shouldGeneratePassword := scrt == nil
 	if scrt != nil {
-
 		mresOutput, err := fn.ParseFromSecret[types.MresOutput](scrt)
 		if err != nil {
 			return req.CheckFailed(AccessCredsReady, check, err.Error()).Err(nil)
 		}
 
-		if err := libMongo.CheckIfValidAuth(ctx, mresOutput.URI); err != nil {
-			req.Logger.Infof("Invalid Credentials in secret's .data.URI, would need to be regenerated")
+		err = libMongo.ConnectAndPing(ctx, mresOutput.URI)
+		if err != nil {
+			if !libMongo.FailsWithAuthError(err) {
+				return req.CheckFailed(AccessCredsReady, check, err.Error())
+			}
+			req.Logger.Infof("Invalid Credentials in secret's .data.URI, would need to be regenerated as connection failed with auth error")
 			shouldGeneratePassword = true
 		}
 	}
@@ -345,5 +348,6 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager, logger logging.Logger) e
 		)
 	}
 
+	builder.WithOptions(controller.Options{MaxConcurrentReconciles: r.Env.MaxConcurrentReconciles})
 	return builder.Complete(r)
 }
