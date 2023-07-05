@@ -44,9 +44,9 @@ func (r *Reconciler) GetName() string {
 }
 
 const (
-	NamespacedRBACsReady  string = "namespaced-rbacs-ready"
-	NamespaceExists       string = "namespace-exists"
-	EnvRouteSwitcherReady string = "env-route-switcher-ready"
+	NamespacedRBACsReady        string = "namespaced-rbacs-ready"
+	NamespaceExists             string = "namespace-exists"
+	WorkspaceRouteSwitcherReady string = "workspace-route-switcher-ready"
 )
 
 // +kubebuilder:rbac:groups=crds.kloudlite.io,resources=projects,verbs=get;list;watch;create;update;patch;delete
@@ -89,7 +89,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.
 		return step.ReconcilerResponse()
 	}
 
-	if step := r.ensureEnvRouteSwitcher(req); !step.ShouldProceed() {
+	if step := r.ensureWorkspaceRouteSwitcher(req); !step.ShouldProceed() {
 		return step.ReconcilerResponse()
 	}
 
@@ -141,7 +141,7 @@ func (r *Reconciler) ensureNamespacedRBACs(req *rApi.Request[*v1.Project]) stepR
 	check := rApi.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(NamespacedRBACsReady)
-	defer req.LogPreCheck(NamespacedRBACsReady)
+	defer req.LogPostCheck(NamespacedRBACsReady)
 
 	var pullSecrets crdsv1.ImagePullSecretList
 	if err := r.List(ctx, &pullSecrets, client.InNamespace(obj.Spec.TargetNamespace)); err != nil {
@@ -180,19 +180,19 @@ func (r *Reconciler) ensureNamespacedRBACs(req *rApi.Request[*v1.Project]) stepR
 	return req.Next()
 }
 
-func (r *Reconciler) ensureEnvRouteSwitcher(req *rApi.Request[*v1.Project]) stepResult.Result {
+func (r *Reconciler) ensureWorkspaceRouteSwitcher(req *rApi.Request[*v1.Project]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
 	check := rApi.Check{Generation: obj.Generation}
 
-	req.LogPreCheck(EnvRouteSwitcherReady)
-	defer req.LogPostCheck(EnvRouteSwitcherReady)
+	req.LogPreCheck(WorkspaceRouteSwitcherReady)
+	defer req.LogPostCheck(WorkspaceRouteSwitcherReady)
 
-	d := &v1.App{ObjectMeta: metav1.ObjectMeta{Name: "env-route-switcher", Namespace: obj.Spec.TargetNamespace}}
+	d := &v1.App{ObjectMeta: metav1.ObjectMeta{Name: "workspace-route-switcher", Namespace: obj.Spec.TargetNamespace}}
 
 	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, d, func() error {
 		d.SetOwnerReferences([]metav1.OwnerReference{fn.AsOwner(obj, true)})
 		d.Spec = v1.AppSpec{
-			DisplayName: "env router switcher",
+			DisplayName: "workspace router switcher",
 			Replicas:    0,
 			Services: []v1.AppSvc{
 				{
@@ -205,7 +205,7 @@ func (r *Reconciler) ensureEnvRouteSwitcher(req *rApi.Request[*v1.Project]) step
 			Containers: []v1.AppContainer{
 				{
 					Name:            "main",
-					Image:           "registry.kloudlite.io/public/env-route-switcher:v1.0.5",
+					Image:           "ghcr.io/kloudlite/operators/workspace-route-switcher:v1.0.5-nightly",
 					ImagePullPolicy: "Always",
 					LivenessProbe: &v1.Probe{
 						Type: "httpGet",
@@ -232,22 +232,24 @@ func (r *Reconciler) ensureEnvRouteSwitcher(req *rApi.Request[*v1.Project]) step
 		}
 		return nil
 	}); err != nil {
-		return req.CheckFailed(EnvRouteSwitcherReady, check, err.Error()).Err(nil)
+		return req.CheckFailed(WorkspaceRouteSwitcherReady, check, err.Error()).Err(nil)
 	}
 
-	a, err := rApi.Get(ctx, r.Client, fn.NN(obj.Spec.TargetNamespace, "env-route-switcher"), &v1.App{})
+	a, err := rApi.Get(ctx, r.Client, fn.NN(obj.Spec.TargetNamespace, "workspace-route-switcher"), &v1.App{})
 	if err != nil {
-		return req.CheckFailed(EnvRouteSwitcherReady, check, err.Error())
+		return req.CheckFailed(WorkspaceRouteSwitcherReady, check, err.Error())
 	}
 
 	if !a.Status.IsReady {
-		return req.CheckFailed(EnvRouteSwitcherReady, check, "waiting for env-route-switcher to be ready").Err(nil)
+		return req.CheckFailed(WorkspaceRouteSwitcherReady, check, "waiting for workspace-route-switcher to be ready").Err(nil)
 	}
 
 	check.Status = true
-	if check != obj.Status.Checks[EnvRouteSwitcherReady] {
-		obj.Status.Checks[EnvRouteSwitcherReady] = check
-		req.UpdateStatus()
+	if check != obj.Status.Checks[WorkspaceRouteSwitcherReady] {
+		obj.Status.Checks[WorkspaceRouteSwitcherReady] = check
+		if sr := req.UpdateStatus(); !sr.ShouldProceed() {
+			return sr
+		}
 	}
 
 	return req.Next()
@@ -264,6 +266,7 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager, logger logging.Logger) e
 	builder.Owns(&rbacv1.Role{})
 	builder.Owns(&rbacv1.RoleBinding{})
 	builder.Owns(&appsv1.Deployment{})
+	builder.Owns(&crdsv1.App{})
 
 	builder.Watches(
 		&source.Kind{Type: &corev1.Namespace{}},

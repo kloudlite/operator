@@ -5,10 +5,11 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	corev1 "k8s.io/api/core/v1"
 	"log"
 	"strings"
 	"time"
+
+	corev1 "k8s.io/api/core/v1"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
@@ -17,6 +18,7 @@ import (
 	types2 "k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -310,7 +312,7 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager, logger logging.Logger) e
 		&crdsv1.ManagedService{},
 		&crdsv1.ManagedResource{},
 		&crdsv1.Router{},
-		&crdsv1.Env{},
+		&crdsv1.Workspace{},
 		&crdsv1.Config{},
 		&crdsv1.Secret{},
 
@@ -323,7 +325,6 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager, logger logging.Logger) e
 
 		fn.NewUnstructured(constants.ClusterType),
 		fn.NewUnstructured(constants.MasterNodeType),
-		// fn.NewUnstructured(constants.DeviceType),
 	}
 
 	for _, object := range watchList {
@@ -353,6 +354,7 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager, logger logging.Logger) e
 		)
 	}
 
+	builder.WithOptions(controller.Options{MaxConcurrentReconciles: r.Env.MaxConcurrentReconciles})
 	builder.WithEventFilter(rApi.ReconcileFilter())
 	return builder.Complete(r)
 }

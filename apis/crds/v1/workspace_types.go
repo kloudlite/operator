@@ -45,9 +45,7 @@ func (e *Workspace) GetEnsuredLabels() map[string]string {
 }
 
 func (e *Workspace) GetEnsuredAnnotations() map[string]string {
-	return map[string]string{
-		constants.GVKKey: e.GroupVersionKind().String(),
-	}
+	return map[string]string{}
 }
 
 //+kubebuilder:object:root=true
