@@ -8,7 +8,6 @@ import (
 
 	"github.com/fatih/color"
 	"go.uber.org/zap"
-	corev1 "k8s.io/api/core/v1"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -18,7 +17,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/kloudlite/operator/pkg/constants"
-	"github.com/kloudlite/operator/pkg/errors"
 	fn "github.com/kloudlite/operator/pkg/functions"
 	"github.com/kloudlite/operator/pkg/logging"
 	stepResult "github.com/kloudlite/operator/pkg/operator/step-result"
@@ -102,23 +100,23 @@ func (r *Request[T]) EnsureLabelsAndAnnotations() stepResult.Result {
 	labels := r.Object.GetEnsuredLabels()
 	annotations := r.Object.GetEnsuredAnnotations()
 
-	if r.Object.GetNamespace() != "" {
-		var ns corev1.Namespace
-		if err := r.client.Get(r.Context(), fn.NN("", r.Object.GetNamespace()), &ns); err != nil {
-			return stepResult.New().Err(errors.NewEf(err, "could not get namespace %q", r.Object.GetNamespace()))
-		}
-
-		for k, v := range ns.GetLabels() {
-			if strings.HasPrefix(k, "kloudlite.io/") {
-				labels[k] = v
-			}
-		}
-		for k, v := range ns.GetAnnotations() {
-			if strings.HasPrefix(k, "kloudlite.io/") {
-				annotations[k] = v
-			}
-		}
-	}
+	// if r.Object.GetNamespace() != "" {
+	// 	var ns corev1.Namespace
+	// 	if err := r.client.Get(r.Context(), fn.NN("", r.Object.GetNamespace()), &ns); err != nil {
+	// 		return stepResult.New().Err(errors.NewEf(err, "could not get namespace %q", r.Object.GetNamespace()))
+	// 	}
+	//
+	// 	for k, v := range ns.GetLabels() {
+	// 		if strings.HasPrefix(k, "kloudlite.io/") {
+	// 			labels[k] = v
+	// 		}
+	// 	}
+	// 	for k, v := range ns.GetAnnotations() {
+	// 		if strings.HasPrefix(k, "kloudlite.io/") {
+	// 			annotations[k] = v
+	// 		}
+	// 	}
+	// }
 
 	annotations[constants.GVKKey] = r.Object.GetObjectKind().GroupVersionKind().String()
 
