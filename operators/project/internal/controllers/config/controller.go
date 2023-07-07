@@ -100,10 +100,14 @@ func (r *Reconciler) ensureConfigMap(req *rApi.Request[*crdsv1.Config]) stepResu
 		return req.CheckFailed(CfgMapCreated, check, err.Error()).Err(nil)
 	}
 
+	req.AddToOwnedResources(rApi.ParseResourceRef(cfg))
+
 	check.Status = true
 	if check != checks[CfgMapCreated] {
 		checks[CfgMapCreated] = check
-		req.UpdateStatus()
+		if sr := req.UpdateStatus(); !sr.ShouldProceed() {
+			return sr
+		}
 	}
 	return req.Next()
 }

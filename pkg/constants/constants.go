@@ -81,6 +81,8 @@ const (
 	ImagePullSecretNameKey string = "kloudlite.io/image-pull-secret.name"
 	CsiDriverNameKey       string = "kloudlite.io/csi-driver.name"
 
+	RecordVersionKey string = "kloudlite.io/record-version"
+
 	ClearStatusKey string = "kloudlite.io/clear-status"
 	ResetCheckKey  string = "kloudlite.io/reset-check"
 	RestartKey     string = "kloudlite.io/do-restart"

@@ -102,10 +102,14 @@ func (r *Reconciler) ensureSecret(req *rApi.Request[*crdsv1.Secret]) stepResult.
 		return req.CheckFailed(K8sSecretCreated, check, err.Error()).Err(nil)
 	}
 
+	req.AddToOwnedResources(rApi.ParseResourceRef(scrt))
+
 	check.Status = true
 	if check != checks[K8sSecretCreated] {
 		checks[K8sSecretCreated] = check
-		req.UpdateStatus()
+		if sr := req.UpdateStatus(); !sr.ShouldProceed() {
+			return sr
+		}
 	}
 	return req.Next()
 }

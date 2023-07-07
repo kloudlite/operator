@@ -250,13 +250,11 @@ tasks:
 
   local-build:agent:
     preconditions:
-      - sh: '[ -n "{{.EnvName}}" ]'
-        msg: 'var EnvName must have a value'
       - sh: '[ -n "{{.Tag}}" ]'
         msg: 'var Tag must have a value'
     vars:
       Name: kl-agent
-      Image: "{{.dockerRegistry}}/kloudlite/{{.EnvName}}/{{.Name}}:{{.Tag}}"
+      Image: ghcr.io/kloudlite/agents/{{.Name}}:{{.Tag}}
     dir: ./agent
     env:
       CGO_ENABLED: 0

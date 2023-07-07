@@ -163,7 +163,6 @@ func (r *Reconciler) ensureNamespaceRBACs(req *rApi.Request[*crdsv1.Workspace]) 
 			"namespace":          obj.Spec.TargetNamespace,
 			"svc-account-name":   r.Env.SvcAccountName,
 			"image-pull-secrets": secretNames,
-			"owner-refs":         []metav1.OwnerReference{fn.AsOwner(obj, true)},
 		},
 	)
 	if err != nil {
