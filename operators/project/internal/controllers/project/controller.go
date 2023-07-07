@@ -113,7 +113,7 @@ func (r *Reconciler) ensureNamespace(req *rApi.Request[*v1.Project]) stepResult.
 		if !apiErrors.IsNotFound(err) {
 			return req.CheckFailed(NamespaceExists, check, err.Error()).Err(nil)
 		}
-		ns = &corev1.Namespace{}
+		ns = &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: obj.Spec.TargetNamespace}}
 	}
 
 	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, ns, func() error {

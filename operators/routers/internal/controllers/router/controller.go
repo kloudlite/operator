@@ -120,12 +120,6 @@ func (r *Reconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.
 	}
 
 	req.Object.Status.IsReady = true
-	req.Object.Status.LastReconcileTime = &metav1.Time{Time: time.Now()}
-	req.Object.Status.Resources = req.GetOwnedResources()
-	if err := r.Status().Update(ctx, req.Object); err != nil {
-		return ctrl.Result{}, err
-	}
-
 	return ctrl.Result{RequeueAfter: r.Env.ReconcilePeriod}, nil
 }
 
@@ -153,7 +147,9 @@ func (r *Reconciler) patchDefaults(req *rApi.Request[*crdsv1.Router]) stepResult
 	check.Status = true
 	if check != checks[DefaultsPatched] {
 		checks[DefaultsPatched] = check
-		req.UpdateStatus()
+		if sr := req.UpdateStatus(); !sr.ShouldProceed() {
+			return sr
+		}
 	}
 	return req.Next()
 }
@@ -196,7 +192,9 @@ func (r *Reconciler) finalize(req *rApi.Request[*crdsv1.Router]) stepResult.Resu
 	check.Status = true
 	if check != checks[Finalizing] {
 		checks[Finalizing] = check
-		req.UpdateStatus()
+		if sr := req.UpdateStatus(); !sr.ShouldProceed() {
+			return sr
+		}
 	}
 	return req.Next()
 }
@@ -255,7 +253,9 @@ func (r *Reconciler) reconBasicAuth(req *rApi.Request[*crdsv1.Router]) stepResul
 	check.Status = true
 	if check != checks[BasicAuthReady] {
 		checks[BasicAuthReady] = check
-		req.UpdateStatus()
+		if sr := req.UpdateStatus(); !sr.ShouldProceed() {
+			return sr
+		}
 	}
 	return req.Next()
 }
@@ -501,7 +501,9 @@ func (r *Reconciler) ensureIngresses(req *rApi.Request[*crdsv1.Router]) stepResu
 	check.Status = true
 	if check != checks[IngressReady] {
 		checks[IngressReady] = check
-		req.UpdateStatus()
+		if sr := req.UpdateStatus(); !sr.ShouldProceed() {
+			return sr
+		}
 	}
 
 	return req.Next()
@@ -517,6 +519,5 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager, logger logging.Logger) e
 	builder.WithOptions(controller.Options{MaxConcurrentReconciles: r.Env.MaxConcurrentReconciles})
 	builder.Owns(&networkingv1.Ingress{})
 	builder.WithEventFilter(rApi.ReconcileFilter())
-
 	return builder.Complete(r)
 }
