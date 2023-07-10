@@ -36,6 +36,7 @@ func (r *Reconciler) GetName() string {
 
 const (
 	K8sNodePoolCreated string = "k8s-nodepool-created"
+	NodePoolDeletion   string = "nodepool-deletion"
 )
 
 // +kubebuilder:rbac:groups=clusters.kloudlite.io,resources=nodepools,verbs=get;list;watch;create;update;patch;delete
@@ -92,9 +93,10 @@ func (r *Reconciler) finalize(req *rApi.Request[*clustersv1.NodePool]) stepResul
 	check := rApi.Check{Generation: obj.Generation}
 
 	failed := func(e error) stepResult.Result {
-		return req.CheckFailed("fail in ensure nodes", check, e.Error())
+		return req.CheckFailed(NodePoolDeletion, check, e.Error())
 	}
 
+	//  fetch nodees of clusterv1
 	var nodes clustersv1.NodeList
 	if err := r.List(ctx, &nodes, &client.ListOptions{
 		LabelSelector: apiLabels.SelectorFromValidatedSet(
@@ -102,16 +104,27 @@ func (r *Reconciler) finalize(req *rApi.Request[*clustersv1.NodePool]) stepResul
 		),
 	}); err != nil {
 		if !apiErrors.IsNotFound(err) {
+			// if error return error
 			return failed(err)
 		}
+		// else not nodes present finalize it
 		return req.Finalize()
 	}
 
+	// if no nodes present finalize it
 	if len(nodes.Items) == 0 {
 		return req.Finalize()
 	}
 
-	return req.Done()
+	//  have to delete one by one
+
+	for _, n := range nodes.Items {
+		if err := r.Delete(ctx, &n); err != nil {
+			return failed(err)
+		}
+	}
+
+	return failed(fmt.Errorf("nodes are set to delete and waiting to be deleted"))
 }
 
 func (r *Reconciler) ensureNodesAsPerReq(req *rApi.Request[*clustersv1.NodePool]) stepResult.Result {

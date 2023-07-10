@@ -47,6 +47,7 @@ func (r *Reconciler) GetName() string {
 
 const (
 	K8sNodeCreated string = "k8s-node-created"
+	NodeDeleted    string = "node-deleted-successfully"
 )
 
 // +kubebuilder:rbac:groups=clusters.kloudlite.io,resources=nodes,verbs=get;list;watch;create;update;patch;delete
@@ -77,7 +78,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.
 		return step.ReconcilerResponse()
 	}
 
-	if step := req.EnsureChecks(K8sNodeCreated); !step.ShouldProceed() {
+	if step := req.EnsureChecks(K8sNodeCreated, NodeDeleted); !step.ShouldProceed() {
 		return step.ReconcilerResponse()
 	}
 
@@ -102,36 +103,70 @@ func (r *Reconciler) finalize(req *rApi.Request[*clustersv1.Node]) stepResult.Re
 	// return req.Finalize()
 	// finalize only if node deleted
 
-	ctx, obj := req.Context(), req.Object
+	/*
+											   steps:
+		                         1. if the status is success -> `finalize if`
+											       2. check if node present on corev1 node
+										          1. if node present create delete job and set the status to deleting,
+										          2. else if node not present check if node deletion job created
+								                 1. if not created and job is finished successfully set status success
+						                     2. else if created and status is no success wait for it
+				                         3. else if not created and status is success -> `finalize if`
+				                         4. else if not created and status is not success again create node deletion job
+
+
+
+	*/
+
+	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
 	check := rApi.Check{Generation: obj.Generation}
 
 	failed := func(e error) stepResult.Result {
-		return req.CheckFailed("fail in ensure nodes", check, e.Error())
+		return req.CheckFailed(NodeDeleted, check, e.Error())
 	}
 
-	np, err := rApi.Get(ctx, r.Client, fn.NN("", obj.Spec.NodePoolName), &clustersv1.NodePool{})
-	if err != nil {
-		return failed(err)
+	success := func() stepResult.Result {
+		check.Status = true
+		if check != checks[NodeDeleted] {
+			checks[NodeDeleted] = check
+			req.UpdateStatus()
+		}
+		return req.Done()
 	}
 
-	nodeConfig, err := r.getNodeConfig(np, obj)
-	if err != nil {
-		return failed(err)
+	// check if node deletion is success if success finalize it
+	if c, ok := checks[NodeDeleted]; ok {
+		if c.Status {
+			return req.Finalize()
+		}
 	}
 
-	providerConfig, err := getProviderConfig()
-	if err != nil {
-		return failed(err)
-	}
+	createNodeDeletionJob := func() error {
 
-	// action := getAction(obj)
+		// fetch the nodepool
+		np, err := rApi.Get(ctx, r.Client, fn.NN("", obj.Spec.NodePoolName), &clustersv1.NodePool{})
+		if err != nil {
+			return err
+		}
 
-	sProvider, err := r.getSpecificProvierConfig()
-	if err != nil {
-		return failed(err)
-	}
+		// get nodeconfig to pass in delete job
+		nodeConfig, err := r.getNodeConfig(np, obj)
+		if err != nil {
+			return err
+		}
 
-	createDeleteNodeJob := func() error {
+		// get provider config to pass in delete job
+		providerConfig, err := getProviderConfig()
+		if err != nil {
+			return err
+		}
+
+		// get specific provider configs to pass in deletion job
+		sProvider, err := r.getSpecificProvierConfig()
+		if err != nil {
+			return err
+		}
+
 		jobYaml, err := templates.Parse(templates.Clusters.Job,
 			map[string]any{
 				"name":      fmt.Sprintf("delete-%s", obj.Name),
@@ -160,23 +195,23 @@ func (r *Reconciler) finalize(req *rApi.Request[*clustersv1.Node]) stepResult.Re
 		return nil
 	}
 
-	j, err := rApi.Get(ctx, r.Client, fn.NN(r.Env.JobNamespace, fmt.Sprintf("delete-%s", obj.Name)), &batchv1.Job{})
+	// get delete job if job present then check either it's success or not
+	jb, err := rApi.Get(ctx, r.Client, fn.NN(r.Env.JobNamespace, fmt.Sprintf("delete-%s", obj.Name)), &batchv1.Job{})
 	if err != nil {
 		if !apiErrors.IsNotFound(err) {
 			return failed(err)
 		}
-
-		if err := createDeleteNodeJob(); err != nil {
+		if err := createNodeDeletionJob(); err != nil {
 			return failed(err)
 		}
-		return req.Done()
+		return failed(fmt.Errorf("deletion job is created and deletion in progress"))
 	}
 
-	if j.Status.Succeeded >= 1 {
-		return req.Finalize()
+	if jb.Status.Succeeded >= 0 {
+		return success()
 	}
 
-	return req.Done()
+	return failed(fmt.Errorf("deletion in progress"))
 }
 
 func (r *Reconciler) ensureNodeReady(req *rApi.Request[*clustersv1.Node]) stepResult.Result {
@@ -321,7 +356,8 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager, logger logging.Logger) e
 					return []reconcile.Request{{NamespacedName: fn.NN("", obj.GetName())}}
 				}
 				return nil
-			}))
+			}),
+	)
 
 	return builder.Complete(r)
 }
