@@ -26,7 +26,7 @@ func getProviderConfig() (string, error) {
 }
 
 func (r *Reconciler) getNodeConfig(np *clustersv1.NodePool, obj *clustersv1.Node) (string, error) {
-	switch r.Env.CloudProvider {
+	switch r.TargetEnv.CloudProvider {
 	case "aws":
 		var awsNode clustersv1.AWSNodeConfig
 		if np.Spec.AWSNodeConfig == nil {
@@ -51,12 +51,12 @@ func (r *Reconciler) getNodeConfig(np *clustersv1.NodePool, obj *clustersv1.Node
 }
 
 func (r *Reconciler) getSpecificProvierConfig() (string, error) {
-	switch r.Env.CloudProvider {
+	switch r.TargetEnv.CloudProvider {
 	case "aws":
 		out, err := json.Marshal(AwsProviderConfig{
-			AccessKey:    r.Env.AccessKey,
-			AccessSecret: r.Env.AccessSecret,
-			AccountName:  r.Env.AccountName,
+			AccessKey:    r.TargetEnv.AccessKey,
+			AccessSecret: r.TargetEnv.AccessSecret,
+			AccountName:  r.TargetEnv.AccountName,
 		})
 		if err != nil {
 			return "", err
@@ -64,7 +64,7 @@ func (r *Reconciler) getSpecificProvierConfig() (string, error) {
 
 		return base64.StdEncoding.EncodeToString(out), nil
 	default:
-		return "", fmt.Errorf("cloud provider %s not supported for now", r.Env.CloudProvider)
+		return "", fmt.Errorf("cloud provider %s not supported for now", r.TargetEnv.CloudProvider)
 	}
 }
 

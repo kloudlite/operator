@@ -28,6 +28,7 @@ type Reconciler struct {
 	Name       string
 	yamlClient *kubectl.YAMLClient
 	Env        *env.Env
+	TargetEnv  *env.TargetEnv
 }
 
 func (r *Reconciler) GetName() string {

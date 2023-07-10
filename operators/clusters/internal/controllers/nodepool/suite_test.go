@@ -31,8 +31,8 @@ var _ = BeforeSuite(
 				ReconcilePeriod:         1 * time.Second,
 				MaxConcurrentReconciles: 10,
 			},
-			logger:     logging.NewOrDie(&logging.Options{Name: "secrets", Dev: true}),
-			Name:       "secret",
+			logger:     logging.NewOrDie(&logging.Options{Name: "nodepools", Dev: true}),
+			Name:       "nodepool",
 			yamlClient: Suite.K8sYamlClient,
 		}
 	},

@@ -1,4 +1,4 @@
-package node
+package platform_node
 
 import (
 	"context"
@@ -34,12 +34,12 @@ const (
 
 type Reconciler struct {
 	client.Client
-	Scheme     *runtime.Scheme
-	logger     logging.Logger
-	Name       string
-	yamlClient *kubectl.YAMLClient
-	Env        *env.Env
-	TargetEnv  *env.TargetEnv
+	Scheme      *runtime.Scheme
+	logger      logging.Logger
+	Name        string
+	yamlClient  *kubectl.YAMLClient
+	Env         *env.Env
+	PlatformEnv *env.PlatformEnv
 }
 
 func (r *Reconciler) GetName() string {
@@ -128,13 +128,13 @@ func (r *Reconciler) finalize(req *rApi.Request[*clustersv1.Node]) stepResult.Re
 	createNodeDeletionJob := func() error {
 
 		// fetch the nodepool
-		np, err := rApi.Get(ctx, r.Client, fn.NN("", obj.Spec.NodePoolName), &clustersv1.NodePool{})
+		cl, err := rApi.Get(ctx, r.Client, fn.NN("", obj.Spec.NodePoolName), &clustersv1.Cluster{})
 		if err != nil {
 			return err
 		}
 
 		// get nodeconfig to pass in delete job
-		nodeConfig, err := r.getNodeConfig(np, obj)
+		nodeConfig, err := r.getNodeConfig(cl, obj)
 		if err != nil {
 			return err
 		}
@@ -145,8 +145,10 @@ func (r *Reconciler) finalize(req *rApi.Request[*clustersv1.Node]) stepResult.Re
 			return err
 		}
 
+		// r.Client
+
 		// get specific provider configs to pass in deletion job
-		sProvider, err := r.getSpecificProvierConfig()
+		sProvider, err := getSpecificProvierConfig(ctx, r.Client, cl)
 		if err != nil {
 			return err
 		}
@@ -157,7 +159,7 @@ func (r *Reconciler) finalize(req *rApi.Request[*clustersv1.Node]) stepResult.Re
 				"namespace": r.Env.JobNamespace,
 				"ownerRefs": []metav1.OwnerReference{fn.AsOwner(obj)},
 
-				"cloudProvider":  r.TargetEnv.CloudProvider,
+				"cloudProvider":  cl.Spec.CloudProvider,
 				"action":         "delete",
 				"nodeConfig":     string(nodeConfig),
 				"providerConfig": string(providerConfig),
@@ -212,12 +214,13 @@ func (r *Reconciler) ensureNodeReady(req *rApi.Request[*clustersv1.Node]) stepRe
 
 	createNodeJob := func() error {
 
-		np, err := rApi.Get(ctx, r.Client, fn.NN("", obj.Spec.NodePoolName), &clustersv1.NodePool{})
+		// fetch the nodepool
+		cl, err := rApi.Get(ctx, r.Client, fn.NN("", obj.Spec.NodePoolName), &clustersv1.Cluster{})
 		if err != nil {
 			return err
 		}
 
-		nodeConfig, err := r.getNodeConfig(np, obj)
+		nodeConfig, err := r.getNodeConfig(cl, obj)
 		if err != nil {
 			return err
 		}
@@ -229,7 +232,7 @@ func (r *Reconciler) ensureNodeReady(req *rApi.Request[*clustersv1.Node]) stepRe
 
 		action := getAction(obj)
 
-		sProvider, err := r.getSpecificProvierConfig()
+		sProvider, err := getSpecificProvierConfig(ctx, r.Client, cl)
 		if err != nil {
 			return err
 		}
@@ -240,7 +243,7 @@ func (r *Reconciler) ensureNodeReady(req *rApi.Request[*clustersv1.Node]) stepRe
 				"namespace": r.Env.JobNamespace,
 				"ownerRefs": []metav1.OwnerReference{fn.AsOwner(obj)},
 
-				"cloudProvider":  r.TargetEnv.CloudProvider,
+				"cloudProvider":  cl.Spec.CloudProvider,
 				"action":         action,
 				"nodeConfig":     nodeConfig,
 				"providerConfig": providerConfig,

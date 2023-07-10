@@ -1,4 +1,4 @@
-package node
+package platform_node
 
 import (
 	"testing"
