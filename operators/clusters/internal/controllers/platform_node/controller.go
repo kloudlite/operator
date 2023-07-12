@@ -6,7 +6,6 @@ import (
 	"time"
 
 	batchv1 "k8s.io/api/batch/v1"
-	corev1 "k8s.io/api/core/v1"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -109,22 +108,6 @@ func (r *Reconciler) finalize(req *rApi.Request[*clustersv1.Node]) stepResult.Re
 		return req.CheckFailed(NodeDeleted, check, e.Error())
 	}
 
-	success := func() stepResult.Result {
-		check.Status = true
-		if check != checks[NodeDeleted] {
-			checks[NodeDeleted] = check
-			req.UpdateStatus()
-		}
-		return req.Done()
-	}
-
-	// check if node deletion is success if success finalize it
-	if c, ok := checks[NodeDeleted]; ok {
-		if c.Status {
-			return req.Finalize()
-		}
-	}
-
 	createNodeDeletionJob := func() error {
 
 		// fetch the nodepool
@@ -181,23 +164,45 @@ func (r *Reconciler) finalize(req *rApi.Request[*clustersv1.Node]) stepResult.Re
 		return nil
 	}
 
-	// get delete job if job present then check either it's success or not
-	jb, err := rApi.Get(ctx, r.Client, fn.NN(r.Env.JobNamespace, fmt.Sprintf("delete-%s", obj.Name)), &batchv1.Job{})
-	if err != nil {
-		if !apiErrors.IsNotFound(err) {
-			return failed(err)
+	/*
+		check for job, if present then check if done if done return else wait
+		if job not present check for the status, if ready then return else create job
+
+	*/
+
+	if err := func() error {
+		jb, err := rApi.Get(ctx, r.Client, fn.NN(r.Env.JobNamespace, fmt.Sprintf("delete-%s", obj.Name)), &batchv1.Job{})
+
+		if err != nil {
+
+			if !apiErrors.IsNotFound(err) {
+				return err
+			}
+
+			if c, ok := checks[NodeDeleted]; ok && c.Status {
+				return nil
+			}
+
+			if err := createNodeDeletionJob(); err != nil {
+				return err
+			}
+
+			return fmt.Errorf("deletion initiated")
+
 		}
-		if err := createNodeDeletionJob(); err != nil {
-			return failed(err)
+
+		if jb.Status.Succeeded >= 1 {
+			err := r.Delete(ctx, jb)
+			return err
 		}
-		return failed(fmt.Errorf("deletion job is created and deletion in progress"))
+
+		return fmt.Errorf("deletion in progress")
+
+	}(); err != nil {
+		return failed(err)
 	}
 
-	if jb.Status.Succeeded >= 0 {
-		return success()
-	}
-
-	return failed(fmt.Errorf("deletion in progress"))
+	return req.Finalize()
 }
 
 func (r *Reconciler) ensureNodeReady(req *rApi.Request[*clustersv1.Node]) stepResult.Result {
@@ -265,55 +270,73 @@ func (r *Reconciler) ensureNodeReady(req *rApi.Request[*clustersv1.Node]) stepRe
 		return nil
 	}
 
-	// do your actions here
-	if err := func() error {
-		if _, err := rApi.Get(ctx, r.Client, fn.NN("", obj.Name), &corev1.Node{}); err != nil {
-			if !apiErrors.IsNotFound(err) {
-				return err
-			}
-			// not found do your action
-
-			// check node job if not created create
-			if _, e := rApi.Get(ctx, r.Client, fn.NN(r.Env.JobNamespace, obj.Name), &batchv1.Job{}); e != nil {
-				if !apiErrors.IsNotFound(e) {
-					return e
-				}
-
-				if err := createNodeJob(); err != nil {
-					return err
-				}
-				return fmt.Errorf("job created for the node creation")
-			}
-		}
-
-		return nil
-	}(); err != nil {
-		return failed(err)
-	}
-
 	// check nodejob
 
+	/*
+				    sterps
+				    1. fetch jobs
+						2. check if job present and if yes wait to be finished
+		        3. if not check status of node, if success return, if not success create job
+
+	*/
+
+	// fetch job
+
 	if err := func() error {
-		if nodeJob, e := rApi.Get(ctx, r.Client, fn.NN(r.Env.JobNamespace, obj.Name), &batchv1.Job{}); e != nil {
-			if !apiErrors.IsNotFound(e) {
-				return e
-			}
-		} else if nodeJob.Status.Succeeded >= 1 {
-			if _, err := rApi.Get(ctx, r.Client, fn.NN("", obj.Name), &corev1.Node{}); err != nil {
-				return err
-			} else {
-				if err := r.Delete(ctx, &batchv1.Job{
+		nodeJob, e := rApi.Get(ctx, r.Client, fn.NN(r.Env.JobNamespace, obj.Name), &batchv1.Job{})
+
+		if e == nil {
+
+			if nodeJob.Status.Succeeded >= 1 {
+
+				err := r.Delete(ctx, &batchv1.Job{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      obj.Name,
 						Namespace: r.Env.JobNamespace,
 					},
-				}); err != nil {
-					return err
-				}
+				})
+
+				return err
+
 			}
+
+			// TODO: have to check error also
+			return fmt.Errorf("creation under progress.")
+
 		}
 
-		return nil
+		if !apiErrors.IsNotFound(e) {
+			return e
+		}
+
+		if checks[NodeReady].Status {
+
+			if rc, ok := obj.Labels["kloudlite.io/recheck-cluster"]; ok && rc == "true" {
+				err := createNodeJob()
+
+				if err != nil {
+					return err
+				}
+
+				obj.Labels["kloudlite.io/recheck-cluster"] = "false"
+
+				if err := r.Update(ctx, obj); err != nil {
+					return err
+				}
+				return fmt.Errorf("recheck running")
+			}
+
+			return nil
+		}
+
+		err := createNodeJob()
+
+		if err != nil {
+			return err
+		}
+
+		return fmt.Errorf("creation under progress..")
+
 	}(); err != nil {
 		return failed(err)
 	}

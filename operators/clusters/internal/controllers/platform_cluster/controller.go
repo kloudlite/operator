@@ -10,12 +10,15 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	clustersv1 "github.com/kloudlite/operator/apis/clusters/v1"
 	"github.com/kloudlite/operator/operators/clusters/internal/controllers/node"
 	"github.com/kloudlite/operator/operators/clusters/internal/env"
 	"github.com/kloudlite/operator/pkg/constants"
-	"github.com/kloudlite/operator/pkg/functions"
+	fn "github.com/kloudlite/operator/pkg/functions"
 	"github.com/kloudlite/operator/pkg/kubectl"
 	"github.com/kloudlite/operator/pkg/logging"
 	rApi "github.com/kloudlite/operator/pkg/operator"
@@ -37,7 +40,8 @@ func (r *Reconciler) GetName() string {
 }
 
 const (
-	ClusterReady string = "cluster-ready"
+	ClusterDeleted string = "cluster-deleted"
+	ClusterReady   string = "cluster-ready"
 )
 
 // +kubebuilder:rbac:groups=clusters.kloudlite.io,resources=clusters,verbs=get;list;watch;create;update;patch;delete
@@ -87,7 +91,14 @@ func (r *Reconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.
 }
 
 func (r *Reconciler) finalize(req *rApi.Request[*clustersv1.Cluster]) stepResult.Result {
-	return req.Done()
+
+	_, obj, _ := req.Context(), req.Object, req.Object.Status.Checks
+	check := rApi.Check{Generation: obj.Generation}
+
+	// TODO: have to write deletion logic
+	k := "************** ~~>* deletion of cluster is not supported yet *<~~ **************"
+	fmt.Println(k)
+	return req.CheckFailed(ClusterDeleted, check, k)
 }
 
 func (r *Reconciler) ensureNodesCreated(req *rApi.Request[*clustersv1.Cluster]) stepResult.Result {
@@ -130,7 +141,7 @@ func (r *Reconciler) ensureNodesCreated(req *rApi.Request[*clustersv1.Cluster]) 
 	// master name -> kl-clustername-master01
 	// secondary master -> kl-clustername-master02,03...
 
-	cluster, err := rApi.Get(ctx, r.Client, functions.NN("", masterName("01")), &clustersv1.Cluster{})
+	cluster, err := rApi.Get(ctx, r.Client, fn.NN("", masterName("01")), &clustersv1.Node{})
 	if err != nil {
 		if !apiErrors.IsNotFound(err) {
 			return failed(err)
@@ -157,7 +168,7 @@ func (r *Reconciler) ensureNodesCreated(req *rApi.Request[*clustersv1.Cluster]) 
 
 	if obj.Spec.AvailablityMode == "HA" {
 		// check for second master
-		_, err := rApi.Get(ctx, r.Client, functions.NN("", masterName("02")), &clustersv1.Cluster{})
+		_, err := rApi.Get(ctx, r.Client, fn.NN("", masterName("02")), &clustersv1.Node{})
 		if err != nil {
 			if !apiErrors.IsNotFound(err) {
 				return failed(err)
@@ -170,7 +181,7 @@ func (r *Reconciler) ensureNodesCreated(req *rApi.Request[*clustersv1.Cluster]) 
 		}
 
 		// check for third master
-		_, err = rApi.Get(ctx, r.Client, functions.NN("", masterName("03")), &clustersv1.Cluster{})
+		_, err = rApi.Get(ctx, r.Client, fn.NN("", masterName("03")), &clustersv1.Node{})
 		if err != nil {
 			if !apiErrors.IsNotFound(err) {
 				return failed(err)
@@ -203,5 +214,17 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager, logger logging.Logger) e
 
 	builder := ctrl.NewControllerManagedBy(mgr).For(&clustersv1.Cluster{})
 	builder.WithEventFilter(rApi.ReconcileFilter())
+
+	builder.Watches(
+		&source.Kind{Type: &clustersv1.Node{}},
+		handler.EnqueueRequestsFromMapFunc(
+			func(obj client.Object) []reconcile.Request {
+				if np, ok := obj.GetLabels()["kloudlite.io/nodepool-name"]; ok {
+					return []reconcile.Request{{NamespacedName: fn.NN("", np)}}
+				}
+				return nil
+			}),
+	)
+
 	return builder.Complete(r)
 }

@@ -37,7 +37,7 @@ func (r *Reconciler) getNodeConfig(cl *clustersv1.Cluster, obj *clustersv1.Node)
 		awsNode := clustersv1.AWSNodeConfig{
 			NodeName: obj.Name,
 			OnDemandSpecs: &clustersv1.OnDemandSpecs{
-				InstanceType: "c6a-large",
+				InstanceType: "c6a.xlarge",
 			},
 			Region:        &cl.Spec.Region,
 			ProvisionMode: "on-demand",
