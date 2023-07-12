@@ -157,8 +157,13 @@ func (r *Reconciler) finalize(req *rApi.Request[*clustersv1.Node]) stepResult.Re
 				"namespace": r.Env.JobNamespace,
 				"ownerRefs": []metav1.OwnerReference{fn.AsOwner(obj)},
 
-				"cloudProvider":  r.TargetEnv.CloudProvider,
-				"action":         "delete",
+				"cloudProvider": r.TargetEnv.CloudProvider,
+				"action": func() string {
+					if s, ok := obj.Labels["kloudlite.io/force-delete"]; ok && s == "true" {
+						return "force-delete"
+					}
+					return "delete"
+				}(),
 				"nodeConfig":     string(nodeConfig),
 				"providerConfig": string(providerConfig),
 
