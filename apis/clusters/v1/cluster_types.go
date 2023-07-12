@@ -19,6 +19,8 @@ type ClusterSpec struct {
 	AvailablityMode string `json:"availabilityMode"`
 	// +kubebuilder:validation:Enum=aws;do;gcp;azure
 	CloudProvider string `json:"cloudProvider"`
+
+	NodeIps []string `json:"nodeIps,omitempty"`
 }
 
 //+kubebuilder:object:root=true

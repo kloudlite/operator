@@ -59,6 +59,10 @@ spec:
                 required:
                 - name
                 type: object
+              nodeIps:
+                items:
+                  type: string
+                type: array
               region:
                 type: string
             required:

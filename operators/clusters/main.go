@@ -4,6 +4,7 @@ import (
 	artifactsv1 "github.com/kloudlite/operator/apis/artifacts/v1"
 	clustersv1 "github.com/kloudlite/operator/apis/clusters/v1"
 	"github.com/kloudlite/operator/operator"
+	"github.com/kloudlite/operator/operators/clusters/internal/controllers/cluster"
 	"github.com/kloudlite/operator/operators/clusters/internal/controllers/node"
 	"github.com/kloudlite/operator/operators/clusters/internal/controllers/nodepool"
 	"github.com/kloudlite/operator/operators/clusters/internal/controllers/platform_cluster"
@@ -28,6 +29,7 @@ func main() {
 		targetEnv := env.GetTargetEnvOrDie()
 
 		mgr.RegisterControllers(
+			&cluster.Reconciler{Name: "cluster", Env: ev, TargetEnv: targetEnv},
 			&nodepool.Reconciler{Name: "nodepool", Env: ev, TargetEnv: targetEnv},
 			&node.Reconciler{Name: "node", Env: ev, TargetEnv: targetEnv},
 		)
