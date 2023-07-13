@@ -5,12 +5,12 @@ import (
 	clustersv1 "github.com/kloudlite/operator/apis/clusters/v1"
 	"github.com/kloudlite/operator/operator"
 
-	"github.com/kloudlite/operator/operators/clusters/internal/controllers/platform_cluster"
-	"github.com/kloudlite/operator/operators/clusters/internal/controllers/platform_node"
+	"github.com/kloudlite/operator/operators/clusters/internal/controllers/platform-cluster"
+	"github.com/kloudlite/operator/operators/clusters/internal/controllers/platform-node"
 
-	"github.com/kloudlite/operator/operators/clusters/internal/controllers/target_cluster"
-	"github.com/kloudlite/operator/operators/clusters/internal/controllers/target_node"
-	"github.com/kloudlite/operator/operators/clusters/internal/controllers/target_nodepool"
+	"github.com/kloudlite/operator/operators/clusters/internal/controllers/target-cluster"
+	"github.com/kloudlite/operator/operators/clusters/internal/controllers/target-node"
+	"github.com/kloudlite/operator/operators/clusters/internal/controllers/target-nodepool"
 
 	"github.com/kloudlite/operator/operators/clusters/internal/env"
 )
