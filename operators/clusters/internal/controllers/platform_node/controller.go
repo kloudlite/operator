@@ -108,75 +108,19 @@ func (r *Reconciler) finalize(req *rApi.Request[*clustersv1.Node]) stepResult.Re
 		return req.CheckFailed(NodeDeleted, check, e.Error())
 	}
 
-	createNodeDeletionJob := func() error {
-
-		// fetch the nodepool
-		cl, err := rApi.Get(ctx, r.Client, fn.NN("", obj.Spec.NodePoolName), &clustersv1.Cluster{})
-		if err != nil {
-			return err
+	getDeleteAction := func() string {
+		if s, ok := obj.Labels["kloudlite.io/force-delete"]; ok && s == "true" {
+			return "force-delete"
 		}
-
-		// get nodeconfig to pass in delete job
-		nodeConfig, err := r.getNodeConfig(cl, obj)
-		if err != nil {
-			return err
-		}
-
-		// get provider config to pass in delete job
-		providerConfig, err := getProviderConfig()
-		if err != nil {
-			return err
-		}
-
-		// r.Client
-
-		// get specific provider configs to pass in deletion job
-		sProvider, err := getSpecificProvierConfig(ctx, r.Client, cl)
-		if err != nil {
-			return err
-		}
-
-		jobYaml, err := templates.Parse(templates.Clusters.Job,
-			map[string]any{
-				"name":      fmt.Sprintf("delete-%s", obj.Name),
-				"namespace": r.Env.JobNamespace,
-				"ownerRefs": []metav1.OwnerReference{fn.AsOwner(obj)},
-
-				"cloudProvider": cl.Spec.CloudProvider,
-				"action": func() string {
-					if s, ok := obj.Labels["kloudlite.io/force-delete"]; ok && s == "true" {
-						return "force-delete"
-					}
-					return "delete"
-				}(),
-				"nodeConfig":     string(nodeConfig),
-				"providerConfig": string(providerConfig),
-
-				"AwsProvider":   string(sProvider),
-				"AzureProvider": string(sProvider),
-				"DoProvider":    string(sProvider),
-				"GCPProvider":   string(sProvider),
-			},
-		)
-		if err != nil {
-			return err
-		}
-
-		if _, err := r.yamlClient.ApplyYAML(ctx, jobYaml); err != nil {
-			return err
-		}
-
-		return nil
+		return "delete"
 	}
 
-	/*
-		check for job, if present then check if done if done return else wait
-		if job not present check for the status, if ready then return else create job
-
-	*/
+	getDeleteJobName := func() string {
+		return fmt.Sprintf("delete-%s", obj.Name)
+	}
 
 	if err := func() error {
-		jb, err := rApi.Get(ctx, r.Client, fn.NN(r.Env.JobNamespace, fmt.Sprintf("delete-%s", obj.Name)), &batchv1.Job{})
+		jb, err := rApi.Get(ctx, r.Client, fn.NN(r.Env.JobNamespace, getDeleteJobName()), &batchv1.Job{})
 
 		if err != nil {
 
@@ -188,7 +132,7 @@ func (r *Reconciler) finalize(req *rApi.Request[*clustersv1.Node]) stepResult.Re
 				return nil
 			}
 
-			if err := createNodeDeletionJob(); err != nil {
+			if err := r.createJob(req, getDeleteAction(), getDeleteJobName()); err != nil {
 				return err
 			}
 
@@ -210,6 +154,59 @@ func (r *Reconciler) finalize(req *rApi.Request[*clustersv1.Node]) stepResult.Re
 	return req.Finalize()
 }
 
+func (r *Reconciler) createJob(req *rApi.Request[*clustersv1.Node], action string, name string) error {
+
+	ctx, obj := req.Context(), req.Object
+
+	// fetch the nodepool
+	cl, err := rApi.Get(ctx, r.Client, fn.NN("", obj.Spec.NodePoolName), &clustersv1.Cluster{})
+	if err != nil {
+		return err
+	}
+
+	nodeConfig, err := r.getNodeConfig(cl, obj)
+	if err != nil {
+		return err
+	}
+
+	providerConfig, err := getProviderConfig()
+	if err != nil {
+		return err
+	}
+
+	sProvider, err := getSpecificProvierConfig(ctx, r.Client, cl)
+	if err != nil {
+		return err
+	}
+
+	jobYaml, err := templates.Parse(templates.Clusters.Job,
+		map[string]any{
+			"name":      name,
+			"namespace": r.Env.JobNamespace,
+			"ownerRefs": []metav1.OwnerReference{fn.AsOwner(obj)},
+
+			"cloudProvider":  cl.Spec.CloudProvider,
+			"action":         action,
+			"nodeConfig":     nodeConfig,
+			"providerConfig": providerConfig,
+
+			"AwsProvider":   sProvider,
+			"AzureProvider": sProvider,
+			"DoProvider":    sProvider,
+			"GCPProvider":   sProvider,
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	if _, err := r.yamlClient.ApplyYAML(ctx, jobYaml); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (r *Reconciler) ensureNodeReady(req *rApi.Request[*clustersv1.Node]) stepResult.Result {
 
 	req.LogPreCheck(NodeReady)
@@ -221,69 +218,6 @@ func (r *Reconciler) ensureNodeReady(req *rApi.Request[*clustersv1.Node]) stepRe
 	failed := func(err error) stepResult.Result {
 		return req.CheckFailed(NodeReady, check, err.Error())
 	}
-
-	createNodeJob := func() error {
-
-		// fetch the nodepool
-		cl, err := rApi.Get(ctx, r.Client, fn.NN("", obj.Spec.NodePoolName), &clustersv1.Cluster{})
-		if err != nil {
-			return err
-		}
-
-		nodeConfig, err := r.getNodeConfig(cl, obj)
-		if err != nil {
-			return err
-		}
-
-		providerConfig, err := getProviderConfig()
-		if err != nil {
-			return err
-		}
-
-		action := getAction(obj)
-
-		sProvider, err := getSpecificProvierConfig(ctx, r.Client, cl)
-		if err != nil {
-			return err
-		}
-
-		jobYaml, err := templates.Parse(templates.Clusters.Job,
-			map[string]any{
-				"name":      obj.Name,
-				"namespace": r.Env.JobNamespace,
-				"ownerRefs": []metav1.OwnerReference{fn.AsOwner(obj)},
-
-				"cloudProvider":  cl.Spec.CloudProvider,
-				"action":         action,
-				"nodeConfig":     nodeConfig,
-				"providerConfig": providerConfig,
-
-				"AwsProvider":   sProvider,
-				"AzureProvider": sProvider,
-				"DoProvider":    sProvider,
-				"GCPProvider":   sProvider,
-			},
-		)
-		if err != nil {
-			return err
-		}
-
-		if _, err := r.yamlClient.ApplyYAML(ctx, jobYaml); err != nil {
-			return err
-		}
-
-		return nil
-	}
-
-	// check nodejob
-
-	/*
-				    sterps
-				    1. fetch jobs
-						2. check if job present and if yes wait to be finished
-		        3. if not check status of node, if success return, if not success create job
-
-	*/
 
 	// fetch job
 
@@ -317,7 +251,7 @@ func (r *Reconciler) ensureNodeReady(req *rApi.Request[*clustersv1.Node]) stepRe
 		if checks[NodeReady].Status {
 
 			if rc, ok := obj.Labels["kloudlite.io/recheck-cluster"]; ok && rc == "true" {
-				err := createNodeJob()
+				err := r.createJob(req, getAction(obj), obj.Name)
 
 				if err != nil {
 					return err
@@ -334,7 +268,7 @@ func (r *Reconciler) ensureNodeReady(req *rApi.Request[*clustersv1.Node]) stepRe
 			return nil
 		}
 
-		err := createNodeJob()
+		err := r.createJob(req, getAction(obj), obj.Name)
 
 		if err != nil {
 			return err

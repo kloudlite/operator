@@ -1,8 +1,9 @@
-package cluster
+package target_cluster
 
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -160,9 +161,19 @@ func (r *Reconciler) ensureIpsUpdated(req *rApi.Request[*clustersv1.Cluster]) st
 		}
 	}
 
-	obj.Spec.NodeIps = ips
-	if err := r.Update(ctx, obj, &client.UpdateOptions{}); err != nil {
-		return failed(err)
+	isEqual := func(a, b []string) bool {
+		if len(a) != len(b) {
+			return false
+		}
+		return reflect.DeepEqual(a, b)
+	}
+
+	if !isEqual(ips, obj.Spec.NodeIps) {
+		obj.Spec.NodeIps = ips
+		if err := r.Update(ctx, obj, &client.UpdateOptions{}); err != nil {
+			return failed(err)
+		}
+		return req.Next()
 	}
 
 	// fetch only without GetDeletionTimestamp
@@ -195,7 +206,7 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager, logger logging.Logger) e
 					return nil
 				}
 
-				if len(clist.Items) != 0 {
+				if len(clist.Items) == 0 {
 					fmt.Println("expected at least one cluster resource to be there")
 					return nil
 				}

@@ -1,4 +1,4 @@
-package node
+package target_node
 
 import (
 	"encoding/base64"
@@ -28,13 +28,15 @@ func getProviderConfig() (string, error) {
 func (r *Reconciler) getNodeConfig(np *clustersv1.NodePool, obj *clustersv1.Node) (string, error) {
 	switch r.TargetEnv.CloudProvider {
 	case "aws":
-		var awsNode clustersv1.AWSNodeConfig
+		var awsNode AWSNodeConfig
 		if np.Spec.AWSNodeConfig == nil {
 			return "", fmt.Errorf("aws node config is not provided")
 		}
 
-		awsNode = *np.Spec.AWSNodeConfig
-		awsNode.NodeName = obj.Name
+		awsNode = AWSNodeConfig{
+			NodeName:      obj.Name,
+			AWSNodeConfig: *np.Spec.AWSNodeConfig,
+		}
 
 		awsbyte, err := yaml.Marshal(awsNode)
 		if err != nil {

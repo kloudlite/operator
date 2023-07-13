@@ -15,7 +15,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	clustersv1 "github.com/kloudlite/operator/apis/clusters/v1"
-	"github.com/kloudlite/operator/operators/clusters/internal/controllers/node"
+	"github.com/kloudlite/operator/operators/clusters/internal/controllers/platform_node"
 	"github.com/kloudlite/operator/operators/clusters/internal/env"
 	"github.com/kloudlite/operator/pkg/constants"
 	fn "github.com/kloudlite/operator/pkg/functions"
@@ -154,7 +154,7 @@ func (r *Reconciler) ensureNodesCreated(req *rApi.Request[*clustersv1.Cluster]) 
 
 	}
 
-	if c, ok := cluster.Status.Checks[node.NodeReady]; true {
+	if c, ok := cluster.Status.Checks[platform_node.NodeReady]; true {
 		if !ok {
 			return failed(fmt.Errorf("can't fetch status for the cluster, please wait"))
 		}
@@ -219,7 +219,7 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager, logger logging.Logger) e
 		&source.Kind{Type: &clustersv1.Node{}},
 		handler.EnqueueRequestsFromMapFunc(
 			func(obj client.Object) []reconcile.Request {
-				if np, ok := obj.GetLabels()["kloudlite.io/nodepool-name"]; ok {
+				if np, ok := obj.GetLabels()["kloudlite.io/nodepool"]; ok {
 					return []reconcile.Request{{NamespacedName: fn.NN("", np)}}
 				}
 				return nil

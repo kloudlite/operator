@@ -9,7 +9,7 @@ import (
 	"gopkg.in/yaml.v2"
 
 	clustersv1 "github.com/kloudlite/operator/apis/clusters/v1"
-	"github.com/kloudlite/operator/operators/clusters/internal/controllers/node"
+	"github.com/kloudlite/operator/operators/clusters/internal/controllers/target_node"
 	fn "github.com/kloudlite/operator/pkg/functions"
 	rApi "github.com/kloudlite/operator/pkg/operator"
 	corev1 "k8s.io/api/core/v1"
@@ -17,7 +17,7 @@ import (
 )
 
 func getProviderConfig() (string, error) {
-	pd := node.CommonProviderData{
+	pd := target_node.CommonProviderData{
 		TfTemplates: tfTemplates,
 		Labels:      map[string]string{},
 		Taints:      []string{},
@@ -34,13 +34,15 @@ func getProviderConfig() (string, error) {
 func (r *Reconciler) getNodeConfig(cl *clustersv1.Cluster, obj *clustersv1.Node) (string, error) {
 	switch cl.Spec.CloudProvider {
 	case "aws":
-		awsNode := clustersv1.AWSNodeConfig{
+		awsNode := target_node.AWSNodeConfig{
 			NodeName: obj.Name,
-			OnDemandSpecs: &clustersv1.OnDemandSpecs{
-				InstanceType: "c6a.xlarge",
+			AWSNodeConfig: clustersv1.AWSNodeConfig{
+				OnDemandSpecs: &clustersv1.OnDemandSpecs{
+					InstanceType: "c6a.xlarge",
+				},
+				Region:        &cl.Spec.Region,
+				ProvisionMode: "on-demand",
 			},
-			Region:        &cl.Spec.Region,
-			ProvisionMode: "on-demand",
 			// VPC:           new(string),
 		}
 
@@ -72,7 +74,7 @@ func getSpecificProvierConfig(ctx context.Context, client client.Client, cl *clu
 
 	switch cl.Spec.CloudProvider {
 	case "aws":
-		out, err := json.Marshal(node.AwsProviderConfig{
+		out, err := json.Marshal(target_node.AwsProviderConfig{
 			AccessKey:    string(s.Data["accessKey"]),
 			AccessSecret: string(s.Data["accessSecret"]),
 			AccountName:  cl.Spec.AccountName,

@@ -1,4 +1,4 @@
-package cluster
+package target_nodepool
 
 import (
 	"testing"
@@ -31,8 +31,8 @@ var _ = BeforeSuite(
 				ReconcilePeriod:         1 * time.Second,
 				MaxConcurrentReconciles: 10,
 			},
-			logger:     logging.NewOrDie(&logging.Options{Name: "clusters", Dev: true}),
-			Name:       "cluster",
+			logger:     logging.NewOrDie(&logging.Options{Name: "nodepools", Dev: true}),
+			Name:       "nodepool",
 			yamlClient: Suite.K8sYamlClient,
 		}
 	},

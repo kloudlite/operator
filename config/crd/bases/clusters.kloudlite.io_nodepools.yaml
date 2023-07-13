@@ -41,8 +41,6 @@ spec:
                     type: string
                   isGpu:
                     type: boolean
-                  nodeName:
-                    type: string
                   onDemandSpecs:
                     properties:
                       instanceType:
@@ -81,8 +79,6 @@ spec:
                   vpc:
                     type: string
                 required:
-                - imageId
-                - nodeName
                 - provisionMode
                 type: object
               maxCount:

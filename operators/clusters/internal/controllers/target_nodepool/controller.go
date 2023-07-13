@@ -1,4 +1,4 @@
-package nodepool
+package target_nodepool
 
 import (
 	"context"
@@ -231,7 +231,7 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager, logger logging.Logger) e
 		&source.Kind{Type: &clustersv1.Node{}},
 		handler.EnqueueRequestsFromMapFunc(
 			func(obj client.Object) []reconcile.Request {
-				if np, ok := obj.GetLabels()["kloudlite.io/nodepool-name"]; ok {
+				if np, ok := obj.GetLabels()["kloudlite.io/nodepool"]; ok {
 					return []reconcile.Request{{NamespacedName: functions.NN("", np)}}
 				}
 				return nil

@@ -4,11 +4,14 @@ import (
 	artifactsv1 "github.com/kloudlite/operator/apis/artifacts/v1"
 	clustersv1 "github.com/kloudlite/operator/apis/clusters/v1"
 	"github.com/kloudlite/operator/operator"
-	"github.com/kloudlite/operator/operators/clusters/internal/controllers/cluster"
-	"github.com/kloudlite/operator/operators/clusters/internal/controllers/node"
-	"github.com/kloudlite/operator/operators/clusters/internal/controllers/nodepool"
+
 	"github.com/kloudlite/operator/operators/clusters/internal/controllers/platform_cluster"
 	"github.com/kloudlite/operator/operators/clusters/internal/controllers/platform_node"
+
+	"github.com/kloudlite/operator/operators/clusters/internal/controllers/target_cluster"
+	"github.com/kloudlite/operator/operators/clusters/internal/controllers/target_node"
+	"github.com/kloudlite/operator/operators/clusters/internal/controllers/target_nodepool"
+
 	"github.com/kloudlite/operator/operators/clusters/internal/env"
 )
 
@@ -29,9 +32,9 @@ func main() {
 		targetEnv := env.GetTargetEnvOrDie()
 
 		mgr.RegisterControllers(
-			&cluster.Reconciler{Name: "cluster", Env: ev, TargetEnv: targetEnv},
-			&nodepool.Reconciler{Name: "nodepool", Env: ev, TargetEnv: targetEnv},
-			&node.Reconciler{Name: "node", Env: ev, TargetEnv: targetEnv},
+			&target_cluster.Reconciler{Name: "cluster", Env: ev, TargetEnv: targetEnv},
+			&target_nodepool.Reconciler{Name: "nodepool", Env: ev, TargetEnv: targetEnv},
+			&target_node.Reconciler{Name: "node", Env: ev, TargetEnv: targetEnv},
 		)
 	default:
 		panic("unknown RUN_MODE please provide one of [platform,targef]")

@@ -1,4 +1,4 @@
-package node
+package target_node
 
 import (
 	"testing"
