@@ -9,7 +9,7 @@ import (
 	"gopkg.in/yaml.v2"
 
 	clustersv1 "github.com/kloudlite/operator/apis/clusters/v1"
-	"github.com/kloudlite/operator/operators/clusters/internal/controllers/target_node"
+	"github.com/kloudlite/operator/operators/clusters/internal/controllers/target-node"
 	fn "github.com/kloudlite/operator/pkg/functions"
 	rApi "github.com/kloudlite/operator/pkg/operator"
 	corev1 "k8s.io/api/core/v1"
@@ -17,13 +17,12 @@ import (
 )
 
 func getProviderConfig() (string, error) {
-	pd := target_node.CommonProviderData{
+	out, err := yaml.Marshal(target_node.CommonProviderData{
 		TfTemplates: tfTemplates,
 		Labels:      map[string]string{},
 		Taints:      []string{},
 		SSHPath:     "",
-	}
-	out, err := yaml.Marshal(pd)
+	})
 	if err != nil {
 		return "", err
 	}
@@ -42,8 +41,8 @@ func (r *Reconciler) getNodeConfig(cl *clustersv1.Cluster, obj *clustersv1.Node)
 				},
 				Region:        &cl.Spec.Region,
 				ProvisionMode: "on-demand",
+				VPC:           cl.Spec.VPC,
 			},
-			// VPC:           new(string),
 		}
 
 		awsbyte, err := yaml.Marshal(awsNode)
@@ -62,12 +61,7 @@ func (r *Reconciler) getNodeConfig(cl *clustersv1.Cluster, obj *clustersv1.Node)
 
 func getSpecificProvierConfig(ctx context.Context, client client.Client, cl *clustersv1.Cluster) (string, error) {
 
-	// cl.Spec.CredentialsRef
-
-	s, err := rApi.Get(ctx,
-		client,
-		fn.NN(cl.Spec.CredentialsRef.Namespace, cl.Spec.CredentialsRef.Name),
-		&corev1.Secret{})
+	s, err := rApi.Get(ctx, client, fn.NN(cl.Spec.CredentialsRef.Namespace, cl.Spec.CredentialsRef.Name), &corev1.Secret{})
 	if err != nil {
 		return "", err
 	}

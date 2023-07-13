@@ -1,4 +1,4 @@
-package platform_node
+package target_node
 
 import (
 	"context"
@@ -6,8 +6,10 @@ import (
 	"time"
 
 	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -33,12 +35,12 @@ const (
 
 type Reconciler struct {
 	client.Client
-	Scheme      *runtime.Scheme
-	logger      logging.Logger
-	Name        string
-	yamlClient  *kubectl.YAMLClient
-	Env         *env.Env
-	PlatformEnv *env.PlatformEnv
+	Scheme     *runtime.Scheme
+	logger     logging.Logger
+	Name       string
+	yamlClient *kubectl.YAMLClient
+	Env        *env.Env
+	TargetEnv  *env.TargetEnv
 }
 
 func (r *Reconciler) GetName() string {
@@ -101,7 +103,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.
 
 func (r *Reconciler) finalize(req *rApi.Request[*clustersv1.Node]) stepResult.Result {
 
-	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
+	ctx, obj := req.Context(), req.Object
 	check := rApi.Check{Generation: obj.Generation}
 
 	failed := func(e error) stepResult.Result {
@@ -109,44 +111,37 @@ func (r *Reconciler) finalize(req *rApi.Request[*clustersv1.Node]) stepResult.Re
 	}
 
 	getDeleteAction := func() string {
-		if s, ok := obj.Labels["kloudlite.io/force-delete"]; ok && s == "true" {
+		if s, ok := obj.Labels[constants.ForceDeleteKey]; ok && s == "true" {
 			return "force-delete"
 		}
 		return "delete"
 	}
 
-	getDeleteJobName := func() string {
+	getDeletionJobName := func() string {
 		return fmt.Sprintf("delete-%s", obj.Name)
 	}
 
 	if err := func() error {
-		jb, err := rApi.Get(ctx, r.Client, fn.NN(r.Env.JobNamespace, getDeleteJobName()), &batchv1.Job{})
-
-		if err != nil {
-
-			if !apiErrors.IsNotFound(err) {
-				return err
-			}
-
-			if c, ok := checks[NodeDeleted]; ok && c.Status {
+		jb, err := rApi.Get(ctx, r.Client, fn.NN(r.Env.JobNamespace, getDeletionJobName()), &batchv1.Job{})
+		if err == nil {
+			if jb.Status.Succeeded >= 1 {
 				return nil
 			}
 
-			if err := r.createJob(req, getDeleteAction(), getDeleteJobName()); err != nil {
-				return err
-			}
-
-			return fmt.Errorf("deletion initiated")
-
+			return fmt.Errorf("deletion in progress")
 		}
 
-		if jb.Status.Succeeded >= 1 {
-			err := r.Delete(ctx, jb)
+		if err != nil {
+			if !apiErrors.IsNotFound(err) {
+				return err
+			}
+		}
+
+		if err := r.createJob(req, getDeleteAction(), getDeletionJobName()); err != nil {
 			return err
 		}
 
-		return fmt.Errorf("deletion in progress")
-
+		return fmt.Errorf("deletion process initiated")
 	}(); err != nil {
 		return failed(err)
 	}
@@ -158,13 +153,12 @@ func (r *Reconciler) createJob(req *rApi.Request[*clustersv1.Node], action strin
 
 	ctx, obj := req.Context(), req.Object
 
-	// fetch the nodepool
-	cl, err := rApi.Get(ctx, r.Client, fn.NN("", obj.Spec.NodePoolName), &clustersv1.Cluster{})
+	np, err := rApi.Get(ctx, r.Client, fn.NN("", obj.Spec.NodePoolName), &clustersv1.NodePool{})
 	if err != nil {
 		return err
 	}
 
-	nodeConfig, err := r.getNodeConfig(cl, obj)
+	nodeConfig, err := r.getNodeConfig(np, obj)
 	if err != nil {
 		return err
 	}
@@ -174,7 +168,7 @@ func (r *Reconciler) createJob(req *rApi.Request[*clustersv1.Node], action strin
 		return err
 	}
 
-	sProvider, err := getSpecificProvierConfig(ctx, r.Client, cl)
+	sProvider, err := r.getSpecificProvierConfig()
 	if err != nil {
 		return err
 	}
@@ -185,7 +179,7 @@ func (r *Reconciler) createJob(req *rApi.Request[*clustersv1.Node], action strin
 			"namespace": r.Env.JobNamespace,
 			"ownerRefs": []metav1.OwnerReference{fn.AsOwner(obj)},
 
-			"cloudProvider":  cl.Spec.CloudProvider,
+			"cloudProvider":  r.TargetEnv.CloudProvider,
 			"action":         action,
 			"nodeConfig":     nodeConfig,
 			"providerConfig": providerConfig,
@@ -219,69 +213,120 @@ func (r *Reconciler) ensureNodeReady(req *rApi.Request[*clustersv1.Node]) stepRe
 		return req.CheckFailed(NodeReady, check, err.Error())
 	}
 
-	// fetch job
-
 	if err := func() error {
-		nodeJob, e := rApi.Get(ctx, r.Client, fn.NN(r.Env.JobNamespace, obj.Name), &batchv1.Job{})
-
-		if e == nil {
-
-			if nodeJob.Status.Succeeded >= 1 {
-
-				err := r.Delete(ctx, &batchv1.Job{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      obj.Name,
-						Namespace: r.Env.JobNamespace,
-					},
-				})
-
+		var nodes corev1.NodeList
+		if err := r.List(ctx, &nodes, &client.ListOptions{
+			LabelSelector: labels.SelectorFromValidatedSet(
+				map[string]string{
+					constants.NodeNameKey: obj.Name,
+				},
+			),
+		}); err != nil {
+			if !apiErrors.IsNotFound(err) {
 				return err
-
 			}
-
-			// TODO: have to check error also
-			return fmt.Errorf("creation under progress.")
-
 		}
 
-		if !apiErrors.IsNotFound(e) {
-			return e
-		}
-
-		if checks[NodeReady].Status {
-
-			if rc, ok := obj.Labels["kloudlite.io/recheck-cluster"]; ok && rc == "true" {
-				err := r.createJob(req, getAction(obj), obj.Name)
-
-				if err != nil {
-					return err
+		if len(nodes.Items) >= 1 {
+			ready := false
+			for _, n := range nodes.Items {
+				for _, nc := range n.Status.Conditions {
+					if nc.Type == "Ready" && nc.Status == "True" {
+						ready = true
+						break
+					}
 				}
 
-				obj.Labels["kloudlite.io/recheck-cluster"] = "false"
-
-				if err := r.Update(ctx, obj); err != nil {
-					return err
+				if ready {
+					break
 				}
-				return fmt.Errorf("recheck running")
 			}
 
-			return nil
+			if ready {
+				jb, e := rApi.Get(ctx, r.Client, fn.NN(r.Env.JobNamespace, obj.Name), &batchv1.Job{})
+				if e != nil {
+					if !apiErrors.IsNotFound(e) {
+						return e
+					}
+
+					// if nodes are more than 1 with same name means we need to delete not-ready nodes
+					if len(nodes.Items) >= 2 {
+						for _, n := range nodes.Items {
+							notReady := false
+							for _, nc := range n.Status.Conditions {
+								if nc.Type == "Ready" && nc.Status != "True" {
+									notReady = true
+									break
+								}
+							}
+
+							if notReady {
+								if err := r.Delete(ctx, &n, &client.DeleteOptions{}); err != nil {
+									return err
+								}
+							}
+						}
+					}
+
+					return nil
+				}
+
+				return r.Delete(ctx, jb, &client.DeleteOptions{})
+			}
+
+			return fmt.Errorf("job is success but still waiting for the node to be live")
 		}
 
-		err := r.createJob(req, getAction(obj), obj.Name)
+		if len(nodes.Items) == 0 {
+			// check node_job, if not created create
+			if _, e := rApi.Get(ctx, r.Client, fn.NN(r.Env.JobNamespace, obj.Name), &batchv1.Job{}); e != nil {
+				if !apiErrors.IsNotFound(e) {
+					return e
+				}
 
-		if err != nil {
-			return err
+				if err := r.createJob(req, getAction(obj), obj.Name); err != nil {
+					return err
+				}
+				return fmt.Errorf("job created for the node creation")
+			}
+
+			return fmt.Errorf("node creation in progress")
 		}
 
-		return fmt.Errorf("creation under progress..")
-
+		return nil
 	}(); err != nil {
 		return failed(err)
 	}
 
-	// check node attached
-	// if not attached then attach then have to attach
+	// check nodejob
+	if err := func() error {
+		nodeJob, e := rApi.Get(ctx, r.Client, fn.NN(r.Env.JobNamespace, obj.Name), &batchv1.Job{})
+		if e != nil {
+			if !apiErrors.IsNotFound(e) {
+				return e
+			}
+			return nil
+		}
+
+		if nodeJob.Status.Succeeded >= 1 {
+			if _, err := rApi.Get(ctx, r.Client, fn.NN("", obj.Name), &corev1.Node{}); err != nil {
+				return err
+			} else {
+				if err := r.Delete(ctx, &batchv1.Job{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      obj.Name,
+						Namespace: r.Env.JobNamespace,
+					},
+				}); err != nil {
+					return err
+				}
+			}
+		}
+
+		return fmt.Errorf("node creation in progress")
+	}(); err != nil {
+		return failed(err)
+	}
 
 	check.Status = true
 	if check != checks[NodeReady] {
@@ -304,7 +349,7 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager, logger logging.Logger) e
 		&source.Kind{Type: &batchv1.Job{}},
 		handler.EnqueueRequestsFromMapFunc(
 			func(obj client.Object) []reconcile.Request {
-				if _, ok := obj.GetLabels()["kloudlite.io/is-nodectrl-job"]; ok {
+				if _, ok := obj.GetLabels()[constants.IsNodeControllerJob]; ok {
 					return []reconcile.Request{{NamespacedName: fn.NN("", obj.GetName())}}
 				}
 				return nil

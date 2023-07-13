@@ -21,6 +21,7 @@ type ClusterSpec struct {
 	CloudProvider string `json:"cloudProvider"`
 
 	NodeIps []string `json:"nodeIps,omitempty"`
+	VPC     *string  `json:"vpc,omitempty"`
 }
 
 //+kubebuilder:object:root=true

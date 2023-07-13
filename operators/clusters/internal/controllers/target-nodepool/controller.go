@@ -91,8 +91,6 @@ func (r *Reconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.
 }
 
 func (r *Reconciler) finalize(req *rApi.Request[*clustersv1.NodePool]) stepResult.Result {
-	// return req.Finalize()
-	// have to delete all nodes then return finalize()
 
 	ctx, obj := req.Context(), req.Object
 	check := rApi.Check{Generation: obj.Generation}
@@ -109,10 +107,9 @@ func (r *Reconciler) finalize(req *rApi.Request[*clustersv1.NodePool]) stepResul
 		),
 	}); err != nil {
 		if !apiErrors.IsNotFound(err) {
-			// if error return error
 			return failed(err)
 		}
-		// else not nodes present finalize it
+		// no nodes present finalize it
 		return req.Finalize()
 	}
 
@@ -122,7 +119,6 @@ func (r *Reconciler) finalize(req *rApi.Request[*clustersv1.NodePool]) stepResul
 	}
 
 	//  have to delete one by one
-
 	for _, n := range nodes.Items {
 		if err := r.Delete(ctx, &n); err != nil {
 			return failed(err)
@@ -144,7 +140,6 @@ func (r *Reconciler) ensureNodesAsPerReq(req *rApi.Request[*clustersv1.NodePool]
 	}
 
 	// fetch all nodes and check either it is same as target or not, if not do the needful
-
 	var nodes clustersv1.NodeList
 	if err := r.List(ctx, &nodes, &client.ListOptions{
 		LabelSelector: apiLabels.SelectorFromValidatedSet(
@@ -154,23 +149,18 @@ func (r *Reconciler) ensureNodesAsPerReq(req *rApi.Request[*clustersv1.NodePool]
 		return failed(err)
 	}
 
-	// nodepool
-	// target: 10 // nodes 10
-	// target: 10
-
 	length := len(nodes.Items)
 	rLength := 0
 
+	// fetch only without GetDeletionTimestamp
 	for _, n := range nodes.Items {
 		if n.GetDeletionTimestamp() == nil {
 			rLength += 1
 		}
 	}
 
-	// fetch only without GetDeletionTimestamp
-
 	if length < obj.Spec.TargetCount {
-		for i := length + 1; i <= obj.Spec.TargetCount; i++ {
+		for i := length; i < obj.Spec.TargetCount; i++ {
 			if err := r.Create(ctx, &clustersv1.Node{
 				ObjectMeta: metav1.ObjectMeta{
 					GenerateName: "kl-worker-",
@@ -201,13 +191,11 @@ func (r *Reconciler) ensureNodesAsPerReq(req *rApi.Request[*clustersv1.NodePool]
 			ctx, &clustersv1.Node{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: n,
-					// Namespace: n.Namespace,
 				},
 			},
 		); err != nil {
 			return failed(err)
 		}
-		// return
 	}
 
 	check.Status = true
@@ -231,7 +219,7 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager, logger logging.Logger) e
 		&source.Kind{Type: &clustersv1.Node{}},
 		handler.EnqueueRequestsFromMapFunc(
 			func(obj client.Object) []reconcile.Request {
-				if np, ok := obj.GetLabels()["kloudlite.io/nodepool"]; ok {
+				if np, ok := obj.GetLabels()[constants.NodePoolKey]; ok {
 					return []reconcile.Request{{NamespacedName: functions.NN("", np)}}
 				}
 				return nil

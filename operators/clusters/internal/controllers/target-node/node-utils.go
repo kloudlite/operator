@@ -11,13 +11,12 @@ import (
 )
 
 func getProviderConfig() (string, error) {
-	pd := CommonProviderData{
+	out, err := yaml.Marshal(CommonProviderData{
 		TfTemplates: tfTemplates,
 		Labels:      map[string]string{},
 		Taints:      []string{},
 		SSHPath:     "",
-	}
-	out, err := yaml.Marshal(pd)
+	})
 	if err != nil {
 		return "", err
 	}
@@ -44,8 +43,8 @@ func (r *Reconciler) getNodeConfig(np *clustersv1.NodePool, obj *clustersv1.Node
 		}
 
 		return base64.StdEncoding.EncodeToString(awsbyte), nil
-
 	case "do", "azure", "gcp":
+
 		panic("unimplemented")
 	default:
 		return "", fmt.Errorf("this type of cloud provider not supported for now")

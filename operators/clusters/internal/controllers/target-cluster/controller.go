@@ -100,9 +100,7 @@ func (r *Reconciler) finalize(req *rApi.Request[*clustersv1.Cluster]) stepResult
 	}
 
 	if err := func() error {
-
 		var nodePools clustersv1.NodePoolList
-
 		if err := r.List(ctx, &nodePools, &client.ListOptions{}); err != nil {
 			return err
 		}
@@ -112,7 +110,6 @@ func (r *Reconciler) finalize(req *rApi.Request[*clustersv1.Cluster]) stepResult
 		}
 
 		count := 0
-
 		for _, np := range nodePools.Items {
 			if np.GetDeletionTimestamp() == nil {
 				count += 1
@@ -154,7 +151,7 @@ func (r *Reconciler) ensureIpsUpdated(req *rApi.Request[*clustersv1.Cluster]) st
 	var ips []string
 
 	for _, n := range nodes.Items {
-		if ip, ok := n.Labels["kloudlite.io/public-ip"]; ok {
+		if ip, ok := n.Labels[constants.PublicIpKey]; ok {
 			ips = append(ips, ip)
 		} else {
 			fmt.Printf("ip not found for the node %s", n.Name)
@@ -175,8 +172,6 @@ func (r *Reconciler) ensureIpsUpdated(req *rApi.Request[*clustersv1.Cluster]) st
 		}
 		return req.Next()
 	}
-
-	// fetch only without GetDeletionTimestamp
 
 	check.Status = true
 	if check != checks[IpsUpToDate] {
@@ -199,7 +194,6 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager, logger logging.Logger) e
 		&source.Kind{Type: &corev1.Node{}},
 		handler.EnqueueRequestsFromMapFunc(
 			func(_ client.Object) []reconcile.Request {
-
 				var clist clustersv1.ClusterList
 				if err := r.List(context.TODO(), &clist, &client.ListOptions{}); err != nil {
 					fmt.Println(err.Error())
@@ -212,7 +206,6 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager, logger logging.Logger) e
 				}
 
 				return []reconcile.Request{{NamespacedName: fn.NN("", clist.Items[0].Name)}}
-
 			}),
 	)
 
