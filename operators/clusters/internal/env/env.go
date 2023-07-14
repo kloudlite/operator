@@ -24,6 +24,8 @@ type TargetEnv struct {
 }
 
 type PlatformEnv struct {
+	// example|default: dns.khost.dev
+	DnsHostedZone string `env:"DNS_HOSTED_ZONE" required:"true"`
 }
 
 func GetEnvOrDie() *Env {
