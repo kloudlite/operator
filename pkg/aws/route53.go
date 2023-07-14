@@ -34,7 +34,7 @@ func IsStringSliceEqual(a, b []string) bool {
 
 func getRoute53Client(accessKey, accessSecret string) (*route53.Route53, error) {
 	sess, err := session.NewSession(&aws.Config{
-		Region:      aws.String("us-west-1"), // Replace with your desired region
+		Region:      aws.String("us-west-1"),
 		Credentials: credentials.NewStaticCredentials(accessKey, accessSecret, ""),
 	})
 	if err != nil {
