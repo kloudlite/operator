@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	corev1 "k8s.io/api/core/v1"
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -99,7 +98,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.
 
 func (r *Reconciler) ensureIpsUpdatedToRoute53(req *rApi.Request[*clustersv1.Cluster]) stepResult.Result {
 
-	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
+	_, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
 	check := rApi.Check{Generation: obj.Generation}
 
 	req.LogPreCheck(IpsUpToDateWithRoute53)
@@ -115,12 +114,7 @@ func (r *Reconciler) ensureIpsUpdatedToRoute53(req *rApi.Request[*clustersv1.Clu
 			return nil
 		}
 
-		s, err := rApi.Get(ctx, r.Client, fn.NN(obj.Spec.CredentialsRef.Namespace, obj.Spec.CredentialsRef.Name), &corev1.Secret{})
-		if err != nil {
-			return err
-		}
-
-		rCli, err := aws.NewAwsRoute53Client(string(s.Data["accessKey"]), string(s.Data["accessSecret"]))
+		rCli, err := aws.NewAwsRoute53Client(r.PlatformEnv.AccessKey, r.PlatformEnv.AccessSecret)
 		if err != nil {
 			return err
 		}
