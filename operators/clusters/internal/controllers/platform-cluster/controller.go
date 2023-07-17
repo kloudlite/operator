@@ -24,6 +24,7 @@ import (
 	"github.com/kloudlite/operator/pkg/logging"
 	rApi "github.com/kloudlite/operator/pkg/operator"
 	stepResult "github.com/kloudlite/operator/pkg/operator/step-result"
+	"github.com/kloudlite/operator/pkg/templates"
 )
 
 type Reconciler struct {
@@ -156,6 +157,22 @@ func (r *Reconciler) ensureNodesCreated(req *rApi.Request[*clustersv1.Cluster]) 
 
 	failed := func(e error) stepResult.Result {
 		return req.CheckFailed(ClusterReady, check, e.Error())
+	}
+
+	if err := func() error {
+		b, err := templates.Parse(templates.Clusters.HelmValues, map[string]any{
+			"values": obj.Spec.HelmValues,
+		})
+		if err != nil {
+			return err
+		}
+
+		fmt.Println(string(b))
+
+		return nil
+	}(); err != nil {
+		fmt.Println(".............................", err.Error())
+		return failed(err)
 	}
 
 	masterName := func(nodeSuffix string) string {

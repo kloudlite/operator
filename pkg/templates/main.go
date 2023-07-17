@@ -220,7 +220,9 @@ var CrdsV1 = struct {
 }
 
 var Clusters = struct {
-	Job templateFile
+	Job        templateFile
+	HelmValues templateFile
 }{
-	Job: "templates/clustersv1/job.yml.tpl",
+	Job:        "templates/clustersv1/job.yml.tpl",
+	HelmValues: "templates/clustersv1/helm-values.yml.tpl",
 }
