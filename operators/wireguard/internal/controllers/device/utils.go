@@ -53,7 +53,6 @@ func checkPortsDiffer(target []corev1.ServicePort, source []wgv1.Port) bool {
 
 // method to check either the port exists int the config
 func getPort(svce []server.ConfigService, id string) (int32, error) {
-	fmt.Println("************************", svce, id, "******************")
 	for _, s := range svce {
 		if s.Id == id {
 			return s.ProxyPort, nil

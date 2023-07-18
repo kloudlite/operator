@@ -159,19 +159,17 @@ func (r *Reconciler) ensureNodesCreated(req *rApi.Request[*clustersv1.Cluster]) 
 		return req.CheckFailed(ClusterReady, check, e.Error())
 	}
 
+	// TODO: This section is WIP will be implemented with next feature
 	if err := func() error {
-		b, err := templates.Parse(templates.Clusters.HelmValues, map[string]any{
+		_, err := templates.Parse(templates.Clusters.HelmValues, map[string]any{
 			"values": obj.Spec.HelmValues,
 		})
 		if err != nil {
 			return err
 		}
 
-		fmt.Println(string(b))
-
 		return nil
 	}(); err != nil {
-		fmt.Println(".............................", err.Error())
 		return failed(err)
 	}
 
