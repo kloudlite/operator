@@ -53,6 +53,12 @@ var AnnotationKeys = struct {
 	Restart: "kloudlite.io/do-restart",
 }
 
+// wireguard secrets
+const (
+	WGDeviceSeceret string = "kloudlite.io/wg-device-sec"
+	WGServerNameKey string = "kloudlite.io/wg-server.name"
+)
+
 const (
 	AccountRef      string = "kloudlite.io/account-ref"
 	ProjectRef      string = "kloudlite.io/project-ref"

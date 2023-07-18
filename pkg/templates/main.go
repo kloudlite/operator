@@ -226,3 +226,13 @@ var Clusters = struct {
 	Job:        "templates/clustersv1/job.yml.tpl",
 	HelmValues: "templates/clustersv1/helm-values.yml.tpl",
 }
+
+var Wiregaurd = struct {
+	Config  templateFile
+	Deploy  templateFile
+	CoreDns templateFile
+}{
+	Config:  "templates/wireguardv1/config.yml.tpl",
+	Deploy:  "templates/wireguardv1/deploy.yml.tpl",
+	CoreDns: "templates/wireguardv1/coredns.yml.tpl",
+}
