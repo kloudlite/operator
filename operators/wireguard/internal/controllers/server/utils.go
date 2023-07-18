@@ -7,7 +7,6 @@ import (
 	"reflect"
 
 	wireguardv1 "github.com/kloudlite/operator/apis/wireguard/v1"
-	"github.com/seancfoley/ipaddress-go/ipaddr"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -42,7 +41,7 @@ func parseDevSec(sec corev1.Secret) (ip []byte, pub []byte, err error) {
 	return ip, pub, nil
 }
 
-func isContains(svce map[string]*configService, port int32) bool {
+func isContains(svce map[string]*ConfigService, port int32) bool {
 	for _, s := range svce {
 		if s.ServicePort == port {
 			return true
@@ -51,7 +50,7 @@ func isContains(svce map[string]*configService, port int32) bool {
 	return false
 }
 
-func getTempPort(svcs map[string]*configService, id string, configData map[string]*configService) int32 {
+func getTempPort(svcs map[string]*ConfigService, id string, configData map[string]*ConfigService) int32 {
 	if svcs[id] != nil {
 		return svcs[id].ProxyPort
 	}
@@ -73,17 +72,6 @@ func getTempPort(svcs map[string]*configService, id string, configData map[strin
 
 		return int32(r)
 	}()
-}
-
-func getRemoteDeviceIp(deviceOffcet int64) ([]byte, error) {
-	deviceRange := ipaddr.NewIPAddressString("10.13.0.0/16")
-
-	if address, addressError := deviceRange.ToAddress(); addressError == nil {
-		increment := address.Increment(deviceOffcet + 2)
-		return []byte(ipaddr.NewIPAddressString(increment.GetNetIP().String()).String()), nil
-	} else {
-		return nil, addressError
-	}
 }
 
 func JSONBytesEqual(a, b []byte) (bool, error) {

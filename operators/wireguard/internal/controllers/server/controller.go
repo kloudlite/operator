@@ -195,15 +195,24 @@ func (r *Reconciler) ensureKeysAndSecret(req *rApi.Request[*wgv1.Server]) stepRe
 
 			return fmt.Errorf("wg secret created")
 		}
+
 		return nil
 	}(); err != nil {
 		return failed(err)
 	}
 
 	if err := func() error {
-		_, priv, err := parseWgSec(sec)
+		pub, priv, err := parseWgSec(sec)
 		if err != nil {
 			return err
+		}
+
+		if obj.Spec.PublicKey == nil || string(pub) != *obj.Spec.PublicKey {
+			pubS := string(pub)
+			obj.Spec.PublicKey = &pubS
+			if err := r.Update(ctx, obj); err != nil {
+				return err
+			}
 		}
 
 		var devSecrets corev1.SecretList
@@ -331,12 +340,12 @@ func (r *Reconciler) ensurDevProxy(req *rApi.Request[*wgv1.Server]) stepResult.R
 			}
 		}
 
-		configs := []configService{}
-		oConfigs := []configService{}
-		configData := map[string]*configService{}
+		configs := []ConfigService{}
+		oConfigs := []ConfigService{}
+		configData := map[string]*ConfigService{}
 
 		if oConf != nil {
-			oCMap := map[string][]configService{}
+			oCMap := map[string][]ConfigService{}
 			if err := json.Unmarshal([]byte(oConf.Data["config.json"]), &oCMap); err != nil {
 				return err
 			}
@@ -358,7 +367,6 @@ func (r *Reconciler) ensurDevProxy(req *rApi.Request[*wgv1.Server]) stepResult.R
 					constants.WGServerNameKey: obj.Name,
 				},
 			),
-			Namespace: getNs(obj),
 		}); err != nil {
 			if apiErrors.IsNotFound(err) {
 				return err
@@ -369,11 +377,11 @@ func (r *Reconciler) ensurDevProxy(req *rApi.Request[*wgv1.Server]) stepResult.R
 			for _, p := range d.Spec.Ports {
 				tempPort := getTempPort(configData, fmt.Sprint(d.Name, "-", p.Port), configData)
 
-				dIp, err := getRemoteDeviceIp(int64(d.Spec.Offset))
+				dIp, err := wgctrl_utils.GetRemoteDeviceIp(int64(d.Spec.Offset))
 				if err != nil {
 					return err
 				}
-				configs = append(configs, configService{
+				configs = append(configs, ConfigService{
 					Id:   fmt.Sprint(d.Name, "-", p.Port),
 					Name: string(dIp),
 					ServicePort: func() int32 {
@@ -393,7 +401,7 @@ func (r *Reconciler) ensurDevProxy(req *rApi.Request[*wgv1.Server]) stepResult.R
 			},
 		)
 		c, err := json.Marshal(
-			map[string][]configService{
+			map[string][]ConfigService{
 				"services": configs,
 			},
 		)
@@ -417,7 +425,7 @@ func (r *Reconciler) ensurDevProxy(req *rApi.Request[*wgv1.Server]) stepResult.R
 				},
 			)
 
-			configJson, err := json.Marshal(map[string][]configService{
+			configJson, err := json.Marshal(map[string][]ConfigService{
 				"services": configs,
 			})
 			if err != nil {
@@ -536,7 +544,6 @@ func (r *Reconciler) ensureCoreDNS(req *rApi.Request[*wgv1.Server]) stepResult.R
 				map[string]any{"name": obj.Name, "configExists": configExists}); err != nil {
 				return err
 			} else if _, err := r.yamlClient.ApplyYAML(ctx, b); err != nil {
-				fmt.Println("here.................................\n", string(b))
 				return err
 			}
 		}

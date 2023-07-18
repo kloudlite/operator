@@ -8,8 +8,9 @@ import (
 
 // ServerSpec defines the desired state of Server
 type ServerSpec struct {
-	AccountName string `json:"accountName"`
-	ClusterName string `json:"clusterName"`
+	AccountName string  `json:"accountName"`
+	ClusterName string  `json:"clusterName"`
+	PublicKey   *string `json:"publicKey,omitempty"`
 }
 
 //+kubebuilder:object:root=true

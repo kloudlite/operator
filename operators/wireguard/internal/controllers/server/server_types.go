@@ -10,7 +10,8 @@ type data struct {
 	ServerPrivateKey string
 	Peers            []Peer
 }
-type configService struct {
+
+type ConfigService struct {
 	Id          string `json:"id"`
 	Name        string `json:"name"`
 	ServicePort int32  `json:"servicePort"`

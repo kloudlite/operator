@@ -39,6 +39,8 @@ spec:
                 type: string
               clusterName:
                 type: string
+              publicKey:
+                type: string
             required:
             - accountName
             - clusterName
