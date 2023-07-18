@@ -227,7 +227,7 @@ var Clusters = struct {
 	HelmValues: "templates/clustersv1/helm-values.yml.tpl",
 }
 
-var Wiregaurd = struct {
+var Wireguard = struct {
 	Config  templateFile
 	Deploy  templateFile
 	CoreDns templateFile

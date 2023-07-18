@@ -243,7 +243,7 @@ func (r *Reconciler) ensureKeysAndSecret(req *rApi.Request[*wgv1.Server]) stepRe
 			})
 		}
 
-		conf, err := templates.Parse(templates.Wiregaurd.Config, data)
+		conf, err := templates.Parse(templates.Wireguard.Config, data)
 		if err != nil {
 			return err
 		}
@@ -486,9 +486,8 @@ func (r *Reconciler) ensureDeploy(req *rApi.Request[*wgv1.Server]) stepResult.Re
 			}
 
 			// created or update wg deployment
-			if b, err := templates.Parse(templates.Wiregaurd.Deploy, map[string]any{
+			if b, err := templates.Parse(templates.Wireguard.Deploy, map[string]any{
 				"name": obj.Name, "isMaster": false,
-				"regionOwnerRefs": []metav1.OwnerReference{fn.AsOwner(obj)},
 			}); err != nil {
 				return err
 			} else if _, err := r.yamlClient.ApplyYAML(ctx, b); err != nil {
@@ -533,10 +532,11 @@ func (r *Reconciler) ensureCoreDNS(req *rApi.Request[*wgv1.Server]) stepResult.R
 				configExists = false
 			}
 
-			if b, err := templates.Parse(templates.Wiregaurd.CoreDns,
+			if b, err := templates.Parse(templates.Wireguard.CoreDns,
 				map[string]any{"name": obj.Name, "configExists": configExists}); err != nil {
 				return err
 			} else if _, err := r.yamlClient.ApplyYAML(ctx, b); err != nil {
+				fmt.Println("here.................................\n", string(b))
 				return err
 			}
 		}

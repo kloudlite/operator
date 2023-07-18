@@ -55,7 +55,7 @@ spec:
   selector:
     matchLabels: &r
       app: dns
- template:
+  template:
     metadata: 
       labels: *r
     spec:

@@ -1,6 +1,5 @@
 {{- $name := get . "name"}}
 {{- $isMaster := get . "isMaster"}}
-{{- $regionOwnerRefs := get . "region-owner-refs" }}
 
 
 apiVersion: apps/v1
@@ -12,8 +11,6 @@ metadata:
   labels:
     kloudlite.io/wg-deployment: "true"
   namespace: "wg-{{ $name }}"
-  ownerReferences:
-    - {{ $regionOwnerRefs | toJson }}
 spec:
   replicas: 1
   strategy:
@@ -101,8 +98,6 @@ metadata:
     kloudlite.io/wg-service: "true"
   name: "wireguard-service"
   namespace: "wg-{{$name}}"
-  ownerReferences:
-    - {{ $regionOwnerRefs | toJson }}
 spec:
   type: NodePort
   ports:
@@ -123,8 +118,6 @@ metadata:
     kloudlite.io/proxy-api: "true"
   name: "wg-api-service"
   namespace: "wg-{{$name}}"
-  ownerReferences:
-    - {{ $regionOwnerRefs | toJson }}
 spec:
   ports:
     - port: 2999
