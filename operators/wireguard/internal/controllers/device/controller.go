@@ -147,7 +147,6 @@ func (r *Reconciler) ensureSecretKeys(req *rApi.Request[*wgv1.Device]) stepResul
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: getNs(obj), Name: name,
 						Labels: map[string]string{constants.WGDeviceSeceret: "true", constants.WGDeviceNameKey: obj.Name},
-						// OwnerReferences: []metav1.OwnerReference{fn.AsOwner(obj, true)},
 					},
 					Data: map[string][]byte{
 						"private-key": priv,
@@ -155,7 +154,6 @@ func (r *Reconciler) ensureSecretKeys(req *rApi.Request[*wgv1.Device]) stepResul
 						"ip":          ip,
 					},
 				}); err != nil {
-					fmt.Println("here....................", err.Error())
 					return err
 				}
 			}
