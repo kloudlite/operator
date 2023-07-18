@@ -57,6 +57,7 @@ var AnnotationKeys = struct {
 const (
 	WGDeviceSeceret string = "kloudlite.io/wg-device-sec"
 	WGServerNameKey string = "kloudlite.io/wg-server.name"
+	WGDeviceNameKey string = "kloudlite.io/wg-device.name"
 )
 
 const (

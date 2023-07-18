@@ -134,8 +134,9 @@ func (r *Reconciler) ensureNs(req *rApi.Request[*wgv1.Server]) stepResult.Result
 			ObjectMeta: metav1.ObjectMeta{
 				Name: getNs(obj),
 				Labels: map[string]string{
-					constants.ClusterNameKey: obj.Spec.ClusterName,
-					constants.AccountNameKey: obj.Spec.AccountName,
+					constants.ClusterNameKey:  obj.Spec.ClusterName,
+					constants.AccountNameKey:  obj.Spec.AccountName,
+					constants.WGServerNameKey: obj.Name,
 				},
 				OwnerReferences: []metav1.OwnerReference{fn.AsOwner(obj, true)},
 			},
@@ -180,6 +181,11 @@ func (r *Reconciler) ensureKeysAndSecret(req *rApi.Request[*wgv1.Server]) stepRe
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "wg-server-keys",
 						Namespace: getNs(obj),
+						Labels: map[string]string{
+							constants.ClusterNameKey:  obj.Spec.ClusterName,
+							constants.AccountNameKey:  obj.Spec.AccountName,
+							constants.WGServerNameKey: obj.Name,
+						},
 						OwnerReferences: []metav1.OwnerReference{
 							fn.AsOwner(obj, true),
 						},
@@ -267,6 +273,11 @@ func (r *Reconciler) ensureKeysAndSecret(req *rApi.Request[*wgv1.Server]) stepRe
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "wg-server-config",
 					Namespace: getNs(obj),
+					Labels: map[string]string{
+						constants.ClusterNameKey:  obj.Spec.ClusterName,
+						constants.AccountNameKey:  obj.Spec.AccountName,
+						constants.WGServerNameKey: obj.Name,
+					},
 				},
 				Data: map[string][]byte{
 					"data": conf,
@@ -282,6 +293,11 @@ func (r *Reconciler) ensureKeysAndSecret(req *rApi.Request[*wgv1.Server]) stepRe
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "wg-server-config",
 					Namespace: getNs(obj),
+					Labels: map[string]string{
+						constants.ClusterNameKey:  obj.Spec.ClusterName,
+						constants.AccountNameKey:  obj.Spec.AccountName,
+						constants.WGServerNameKey: obj.Name,
+					},
 				},
 				Data: map[string][]byte{
 					"data": conf,
@@ -328,8 +344,14 @@ func (r *Reconciler) ensurDevProxy(req *rApi.Request[*wgv1.Server]) stepResult.R
 
 			if err := r.Create(ctx, &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:            name,
-					Namespace:       getNs(obj),
+					Name:      name,
+					Namespace: getNs(obj),
+					Labels: map[string]string{
+						constants.ClusterNameKey:  obj.Spec.ClusterName,
+						constants.AccountNameKey:  obj.Spec.AccountName,
+						constants.WGServerNameKey: obj.Name,
+					},
+
 					OwnerReferences: []metav1.OwnerReference{fn.AsOwner(obj)},
 				},
 				Data: map[string]string{
@@ -436,6 +458,10 @@ func (r *Reconciler) ensurDevProxy(req *rApi.Request[*wgv1.Server]) stepResult.R
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      name,
 					Namespace: getNs(obj),
+					Labels: map[string]string{
+						constants.ClusterNameKey: obj.Spec.ClusterName,
+						constants.AccountNameKey: obj.Spec.AccountName,
+					},
 					OwnerReferences: []metav1.OwnerReference{
 						fn.AsOwner(obj),
 					},
@@ -581,16 +607,26 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager, logger logging.Logger) e
 	builder := ctrl.NewControllerManagedBy(mgr).For(&wgv1.Server{})
 	builder.WithEventFilter(rApi.ReconcileFilter())
 
-	builder.Watches(
-		&source.Kind{Type: &wgv1.Device{}},
-		handler.EnqueueRequestsFromMapFunc(
-			func(obj client.Object) []reconcile.Request {
-				if acc, ok := obj.GetLabels()[constants.AccountNameKey]; ok {
-					return []reconcile.Request{{NamespacedName: fn.NN("", acc)}}
-				}
-				return nil
-			}),
-	)
+	watchList := []client.Object{
+		&wgv1.Device{},
+		&corev1.Secret{},
+		&corev1.ConfigMap{},
+		&corev1.Namespace{},
+		&appsv1.Deployment{},
+	}
+
+	for i := range watchList {
+		builder.Watches(
+			&source.Kind{Type: watchList[i]},
+			handler.EnqueueRequestsFromMapFunc(
+				func(obj client.Object) []reconcile.Request {
+					if serverName, ok := obj.GetLabels()[constants.WGServerNameKey]; ok {
+						return []reconcile.Request{{NamespacedName: fn.NN("", serverName)}}
+					}
+					return nil
+				}),
+		)
+	}
 
 	return builder.Complete(r)
 }

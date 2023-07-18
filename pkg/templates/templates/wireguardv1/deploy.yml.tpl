@@ -10,6 +10,7 @@ metadata:
     kloudlite.io/account.name: {{ $name }}
   labels:
     kloudlite.io/wg-deployment: "true"
+    kloudlite.io/wg-server.name: {{ $name }}
   namespace: "wg-{{ $name }}"
 spec:
   replicas: 1
@@ -33,7 +34,7 @@ spec:
       containers:
       - name: proxy
         imagePullPolicy: IfNotPresent
-        image: registry.kloudlite.io/public/kloudlite/production/proxy:v1.0.3
+        image: ghcr.io/kloudlite/platform/apis/wg-proxy:v1.0.5-nightly
         env:
           - name: CONFIG_FILE
             value: /proxy-config/config.json
@@ -45,7 +46,7 @@ spec:
       - name: wireguard
         # image: ghcr.io/linuxserver/wireguard
         imagePullPolicy: IfNotPresent
-        image: registry.kloudlite.io/public/kloudlite/production/wg-restart:v1.0.3
+        image: ghcr.io/kloudlite/platform/apis/wg-restart:v1.0.5-nightly
         securityContext:
           capabilities:
             add:
@@ -96,6 +97,7 @@ metadata:
   labels:
     k8s-app: wireguard
     kloudlite.io/wg-service: "true"
+    kloudlite.io/wg-server.name: {{ $name }}
   name: "wireguard-service"
   namespace: "wg-{{$name}}"
 spec:
@@ -116,6 +118,7 @@ metadata:
     kloudlite.io/account.name: {{$name}}
   labels:
     kloudlite.io/proxy-api: "true"
+    kloudlite.io/wg-server.name: {{ $name }}
   name: "wg-api-service"
   namespace: "wg-{{$name}}"
 spec:

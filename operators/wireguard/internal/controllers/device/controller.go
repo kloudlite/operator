@@ -17,6 +17,9 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	wgv1 "github.com/kloudlite/operator/apis/wireguard/v1"
 	"github.com/kloudlite/operator/operators/wireguard/internal/env"
@@ -143,7 +146,7 @@ func (r *Reconciler) ensureSecretKeys(req *rApi.Request[*wgv1.Device]) stepResul
 					},
 					ObjectMeta: metav1.ObjectMeta{
 						Namespace: getNs(obj), Name: name,
-						Labels: map[string]string{constants.WGDeviceSeceret: "true"},
+						Labels: map[string]string{constants.WGDeviceSeceret: "true", constants.WGDeviceNameKey: obj.Name},
 						// OwnerReferences: []metav1.OwnerReference{fn.AsOwner(obj, true)},
 					},
 					Data: map[string][]byte{
@@ -232,7 +235,9 @@ func (r *Reconciler) ensureConfig(req *rApi.Request[*wgv1.Device]) stepResult.Re
 					APIVersion: "v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
-					Name: configName, Namespace: getNs(obj), OwnerReferences: []metav1.OwnerReference{fn.AsOwner(obj, true)},
+					Name: configName, Namespace: getNs(obj),
+					Labels:          map[string]string{constants.WGDeviceNameKey: obj.Name},
+					OwnerReferences: []metav1.OwnerReference{fn.AsOwner(obj, true)},
 				},
 				Data: map[string][]byte{"config": out},
 			}); err != nil {
@@ -321,7 +326,10 @@ func (r *Reconciler) ensureServiceSync(req *rApi.Request[*wgv1.Device]) stepResu
 				Kind:       "Service",
 				APIVersion: "v1",
 			},
-			ObjectMeta: metav1.ObjectMeta{Namespace: getNs(obj), Name: obj.Name},
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: getNs(obj), Name: obj.Name,
+				Labels: map[string]string{constants.WGDeviceNameKey: obj.Name},
+			},
 			Spec: corev1.ServiceSpec{
 				Ports: func() []corev1.ServicePort {
 					if len(sPorts) != 0 {
@@ -498,6 +506,24 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager, logger logging.Logger) e
 
 	builder := ctrl.NewControllerManagedBy(mgr).For(&wgv1.Device{})
 	builder.WithEventFilter(rApi.ReconcileFilter())
+
+	watchList := []client.Object{
+		&corev1.Secret{},
+		&corev1.Service{},
+	}
+
+	for i := range watchList {
+		builder.Watches(
+			&source.Kind{Type: watchList[i]},
+			handler.EnqueueRequestsFromMapFunc(
+				func(obj client.Object) []reconcile.Request {
+					if dev, ok := obj.GetLabels()[constants.WGDeviceNameKey]; ok {
+						return []reconcile.Request{{NamespacedName: fn.NN("", dev)}}
+					}
+					return nil
+				}),
+		)
+	}
 
 	return builder.Complete(r)
 }
