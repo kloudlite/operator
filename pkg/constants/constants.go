@@ -86,9 +86,11 @@ const (
 
 	RecordVersionKey string = "kloudlite.io/record-version"
 
+	// changes controller behaviour
 	ClearStatusKey string = "kloudlite.io/clear-status"
 	ResetCheckKey  string = "kloudlite.io/reset-check"
 	RestartKey     string = "kloudlite.io/do-restart"
+	DoHelmUpgrade  string = "kloudlite.io/do-helm-upgrade"
 
 	IsBluePrintKey    string = "kloudlite.io/is-blueprint"
 	MarkedAsBlueprint string = "kloudlite.io/marked-as-blueprint"
