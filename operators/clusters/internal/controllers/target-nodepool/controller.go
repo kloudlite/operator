@@ -231,10 +231,10 @@ func (r *Reconciler) ensureNodesInfoSyncd(req *rApi.Request[*clustersv1.NodePool
 		return failed(err)
 	}
 
-	var nodesInfo []NodeInfo
+	nodesInfo := make([]NodeInfo, len(nodes.Items))
 
-	for _, n := range nodes.Items {
-		nodesInfo = append(nodesInfo, NodeInfo{
+	for i, n := range nodes.Items {
+		nodesInfo[i] = NodeInfo{
 			Name: n.Name,
 			Status: func() string {
 				if n.Status.IsReady {
@@ -250,7 +250,7 @@ func (r *Reconciler) ensureNodesInfoSyncd(req *rApi.Request[*clustersv1.NodePool
 
 				return string(b)
 			}(),
-		})
+		}
 	}
 
 	nodesJson, err := json.Marshal(nodesInfo)
