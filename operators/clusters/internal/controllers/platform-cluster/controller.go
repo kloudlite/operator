@@ -2,17 +2,19 @@ package platform_cluster
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"time"
 
 	apiErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	apiLabels "k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	clustersv1 "github.com/kloudlite/operator/apis/clusters/v1"
 	platform_node "github.com/kloudlite/operator/operators/clusters/internal/controllers/platform-node"
@@ -44,6 +46,7 @@ const (
 	ClusterDeleted         string = "cluster-deleted"
 	ClusterReady           string = "cluster-ready"
 	IpsUpToDateWithRoute53 string = "ips-updated-to-route53"
+	NodesInfoSynced        string = "nodes-info-synced"
 )
 
 // +kubebuilder:rbac:groups=clusters.kloudlite.io,resources=clusters,verbs=get;list;watch;create;update;patch;delete
@@ -70,7 +73,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.
 		return step.ReconcilerResponse()
 	}
 
-	if step := req.EnsureChecks(ClusterReady, ClusterDeleted, IpsUpToDateWithRoute53); !step.ShouldProceed() {
+	if step := req.EnsureChecks(ClusterReady, ClusterDeleted, IpsUpToDateWithRoute53, NodesInfoSynced); !step.ShouldProceed() {
 		return step.ReconcilerResponse()
 	}
 
@@ -87,6 +90,10 @@ func (r *Reconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.
 	}
 
 	if step := r.ensureIpsUpdatedToRoute53(req); !step.ShouldProceed() {
+		return step.ReconcilerResponse()
+	}
+
+	if step := r.ensureNodesInfoSyncd(req); !step.ShouldProceed() {
 		return step.ReconcilerResponse()
 	}
 
@@ -250,6 +257,72 @@ func (r *Reconciler) ensureNodesCreated(req *rApi.Request[*clustersv1.Cluster]) 
 	return req.Next()
 }
 
+func (r *Reconciler) ensureNodesInfoSyncd(req *rApi.Request[*clustersv1.Cluster]) stepResult.Result {
+	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
+	check := rApi.Check{Generation: obj.Generation}
+	var nodes clustersv1.NodeList
+
+	failed := func(e error) stepResult.Result {
+		return req.CheckFailed("fail in ensure nodes", check, e.Error())
+	}
+
+	if err := r.List(ctx, &nodes, &client.ListOptions{
+		LabelSelector: apiLabels.SelectorFromValidatedSet(map[string]string{
+			constants.ClusterNameKey: obj.Name,
+		}),
+	}); err != nil {
+		return failed(err)
+	}
+
+	var nodesInfo []NodeInfo
+
+	for _, n := range nodes.Items {
+		nodesInfo = append(nodesInfo, NodeInfo{
+			Name: n.Name,
+			Status: func() string {
+				if n.Status.IsReady {
+					return "running"
+				}
+				return "error"
+			}(),
+			Message: func() string {
+				b, err := json.Marshal(n.Status.Checks)
+				if err != nil {
+					return ""
+				}
+
+				return string(b)
+			}(),
+		})
+	}
+
+	nodesJson, err := json.Marshal(nodesInfo)
+	if err != nil {
+		return failed(err)
+	}
+
+	nodesString := base64.RawStdEncoding.EncodeToString(nodesJson)
+
+	if m, ok := obj.GetAnnotations()[constants.NodesInfosKey]; !ok {
+		if m != nodesString {
+			obj.Annotations[constants.NodesInfosKey] = nodesString
+
+			if err := r.Update(ctx, obj); err != nil {
+				return failed(err)
+			}
+		}
+	} else if err := r.Update(ctx, obj); err != nil {
+		return failed(err)
+	}
+
+	check.Status = true
+	if check != checks[NodesInfoSynced] {
+		checks[NodesInfoSynced] = check
+		req.UpdateStatus()
+	}
+	return req.Next()
+}
+
 func (r *Reconciler) SetupWithManager(mgr ctrl.Manager, logger logging.Logger) error {
 	r.Client = mgr.GetClient()
 	r.Scheme = mgr.GetScheme()
@@ -260,9 +333,9 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager, logger logging.Logger) e
 	builder.WithEventFilter(rApi.ReconcileFilter())
 
 	builder.Watches(
-		&source.Kind{Type: &clustersv1.Node{}},
+		&clustersv1.Node{},
 		handler.EnqueueRequestsFromMapFunc(
-			func(obj client.Object) []reconcile.Request {
+			func(_ context.Context, obj client.Object) []reconcile.Request {
 				if cl, ok := obj.GetLabels()[constants.ClusterNameKey]; ok {
 					return []reconcile.Request{{NamespacedName: fn.NN("", cl)}}
 				}
