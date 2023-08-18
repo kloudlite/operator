@@ -3,6 +3,10 @@ package operator
 import (
 	"flag"
 	"fmt"
+	"log"
+	"net/http"
+	"os"
+
 	"github.com/kloudlite/operator/pkg/kubectl"
 	"github.com/kloudlite/operator/pkg/logging"
 	rApi "github.com/kloudlite/operator/pkg/operator"
@@ -10,9 +14,8 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
-	"log"
-	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -81,6 +84,13 @@ func New(name string) Operator {
 			LeaderElection:             enableLeaderElection,
 			LeaderElectionID:           fmt.Sprintf("operator-%s.kloudlite.io", name),
 			LeaderElectionResourceLock: "configmapsleases",
+			Client: client.Options{
+				HTTPClient: &http.Client{
+					Transport: &http.Transport{
+						DisableCompression: false,
+					},
+				},
+			},
 		}
 		if isDev {
 			cOpts.MetricsBindAddress = "0"

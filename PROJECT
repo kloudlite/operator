@@ -506,6 +506,7 @@ resources:
   group: crds
   kind: HelmChart
   path: github.com/kloudlite/operator/apis/crds/v1
+  version: ""
 - api:
     crdVersion: v1
     namespaced: true
@@ -521,5 +522,13 @@ resources:
   group: wireguard
   kind: Device
   path: github.com/kloudlite/operator/apis/wireguard/v1
+  version: v1
+- api:
+    crdVersion: v1
+    namespaced: true
+  domain: kloudlite.io
+  group: crds
+  kind: Environment
+  path: github.com/kloudlite/operator/apis/crds/v1
   version: v1
 version: "3"

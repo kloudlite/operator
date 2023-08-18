@@ -19,6 +19,7 @@ require (
 	github.com/onsi/ginkgo/v2 v2.9.5
 	github.com/onsi/gomega v1.27.7
 	github.com/pkg/errors v0.9.1
+	github.com/pkg/profile v1.7.0
 	github.com/seancfoley/ipaddress-go v1.5.4
 	github.com/sirupsen/logrus v1.9.0
 	github.com/sykesm/zap-logfmt v0.0.4
@@ -40,8 +41,9 @@ require (
 )
 
 require (
+	github.com/felixge/fgprof v0.9.3 // indirect
 	github.com/go-task/slim-sprig v0.0.0-20230315185526-52ccab3ef572 // indirect
-	github.com/google/pprof v0.0.0-20210720184732-4bb14d4b1be1 // indirect
+	github.com/google/pprof v0.0.0-20211214055906-6f57359322fd // indirect
 	github.com/seancfoley/bintree v1.2.1 // indirect
 	golang.org/x/tools v0.9.1 // indirect
 )
