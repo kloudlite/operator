@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"net/http"
 	"os"
 
 	"github.com/kloudlite/operator/pkg/kubectl"
@@ -33,6 +32,7 @@ func init() {
 type Operator interface {
 	AddToSchemes(fns ...func(s *runtime.Scheme) error)
 	RegisterControllers(controllers ...rApi.Reconciler)
+	RegisterWebhooks(objects ...WebhookEnabledType)
 	Start()
 	Operator() *operator
 }
@@ -45,7 +45,7 @@ type operator struct {
 	IsDev         bool
 	schemesAdded  bool
 	Scheme        *runtime.Scheme
-	k8sYamlClient *kubectl.YAMLClient
+	k8sYamlClient kubectl.YAMLClient
 }
 
 func New(name string) Operator {
@@ -84,16 +84,10 @@ func New(name string) Operator {
 			LeaderElection:             enableLeaderElection,
 			LeaderElectionID:           fmt.Sprintf("operator-%s.kloudlite.io", name),
 			LeaderElectionResourceLock: "configmapsleases",
-			Client: client.Options{
-				HTTPClient: &http.Client{
-					Transport: &http.Transport{
-						DisableCompression: false,
-					},
-				},
-			},
 		}
 		if isDev {
 			cOpts.MetricsBindAddress = "0"
+			// cOpts.MetricsBindAddress = "0"
 			// cOpts.LeaderElectionID = "nxtcoder17.dev.kloudlite.io"
 			return &rest.Config{Host: devServerHost}, cOpts
 		}
@@ -151,6 +145,24 @@ func (op *operator) RegisterControllers(controllers ...rApi.Reconciler) {
 	if err := op.manager.AddReadyzCheck("readyz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up ready check")
 		os.Exit(1)
+	}
+}
+
+type WebhookEnabledType interface {
+	client.Object
+	SetupWebhookWithManager(mgr ctrl.Manager) error
+}
+
+func (op *operator) RegisterWebhooks(types ...WebhookEnabledType) {
+	if op.manager == nil {
+		panic("manager is not defined, schemes have not been registered, please add with .AddToSchemes() fn")
+	}
+
+	for _, rc := range types {
+		if err := rc.SetupWebhookWithManager(op.manager); err != nil {
+			setupLog.Error(err, "unable to create webhook", "webhook", rc.GetName())
+			os.Exit(1)
+		}
 	}
 }
 
