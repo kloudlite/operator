@@ -1,0 +1,481 @@
+package helm_controller
+
+import (
+	"context"
+	"embed"
+	"encoding/json"
+	"fmt"
+	"path"
+	"time"
+
+	crdsv1 "github.com/kloudlite/operator/apis/crds/v1"
+	"github.com/kloudlite/operator/operators/helm-charts/internal/env"
+	"github.com/kloudlite/operator/pkg/constants"
+	fn "github.com/kloudlite/operator/pkg/functions"
+	"github.com/kloudlite/operator/pkg/helm"
+	"github.com/kloudlite/operator/pkg/kubectl"
+	"github.com/kloudlite/operator/pkg/logging"
+	rApi "github.com/kloudlite/operator/pkg/operator"
+	stepResult "github.com/kloudlite/operator/pkg/operator/step-result"
+	"github.com/kloudlite/operator/pkg/templates"
+	"helm.sh/helm/v3/pkg/release"
+	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
+	apiLabels "k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
+)
+
+type Reconciler struct {
+	client.Client
+	Scheme     *runtime.Scheme
+	Env        *env.Env
+	logger     logging.Logger
+	Name       string
+	yamlClient kubectl.YAMLClient
+	helmClient helm.Client
+
+	templateInstallOrUpgradeJob []byte
+	templateUninstallJob        []byte
+}
+
+func (r *Reconciler) GetName() string {
+	return r.Name
+}
+
+var (
+	ChartReleaseInstalledOrUpgraded string = "chart-release-installed-or-upgraded"
+	ChartRepoAdded                  string = "chart-repo-added"
+)
+
+// checks
+const (
+	installOrUpgradeJob string = "install-or-upgrade-job"
+	uninstallJob        string = "uninstall-job"
+	checkJobStatus      string = "check-job-status"
+)
+
+//go:embed templates/*
+var templatesDir embed.FS
+
+// +kubebuilder:rbac:groups=helm.kloudlite.io,resources=helmcharts,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=helm.kloudlite.io,resources=helmcharts/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=helm.kloudlite.io,resources=helmcharts/finalizers,verbs=update
+
+func (r *Reconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.Result, error) {
+	req, err := rApi.NewRequest(context.WithValue(ctx, "logger", r.logger), r.Client, request.NamespacedName, &crdsv1.HelmChart{})
+	if err != nil {
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+
+	req.LogPreReconcile()
+	defer req.LogPostReconcile()
+
+	if req.Object.GetDeletionTimestamp() != nil {
+		if x := r.finalize(req); !x.ShouldProceed() {
+			return x.ReconcilerResponse()
+		}
+		return ctrl.Result{}, nil
+	}
+
+	if step := req.ClearStatusIfAnnotated(); !step.ShouldProceed() {
+		return step.ReconcilerResponse()
+	}
+
+	if step := req.EnsureLabelsAndAnnotations(); !step.ShouldProceed() {
+		return step.ReconcilerResponse()
+	}
+
+	if step := req.EnsureFinalizers(constants.CommonFinalizer); !step.ShouldProceed() {
+		return step.ReconcilerResponse()
+	}
+
+	// if step := r.addChartRepo(req); !step.ShouldProceed() {
+	// 	return step.ReconcilerResponse()
+	// }
+	//
+	// if step := r.installOrUpgradeChartRelease(req); !step.ShouldProceed() {
+	// 	return step.ReconcilerResponse()
+	// }
+
+	if step := r.startInstallJob(req); !step.ShouldProceed() {
+		return step.ReconcilerResponse()
+	}
+
+	if step := r.checkInstallJobStatus(req); !step.ShouldProceed() {
+		return step.ReconcilerResponse()
+	}
+
+	req.Object.Status.IsReady = true
+	if step := req.UpdateStatus(); !step.ShouldProceed() {
+		return step.ReconcilerResponse()
+	}
+	return ctrl.Result{RequeueAfter: r.Env.ReconcilePeriod}, nil
+}
+
+func (r *Reconciler) finalize(req *rApi.Request[*crdsv1.HelmChart]) stepResult.Result {
+	ctx, obj := req.Context(), req.Object
+
+	checkName := "finalize"
+
+	req.LogPreCheck(checkName)
+	defer req.LogPostCheck(checkName)
+
+	check := rApi.Check{Generation: obj.Generation}
+
+	// r.helmClient.UninstallRelease(ctx, obj.Namespace, obj.Name)
+
+	if step := r.startUninstallJob(req); !step.ShouldProceed() {
+		return step
+	}
+
+	v, ok := obj.Status.ResourceMap["uninstall-job"]
+	if !ok {
+		return req.CheckFailed(checkJobStatus, check, "install-job key not found in .Status.ResourceMap")
+	}
+
+	job := &batchv1.Job{}
+	if err := r.Get(ctx, fn.NN(v.Namespace, v.Name), job); err != nil {
+		return req.CheckFailed(checkJobStatus, check, "failed to find corresponding job")
+	}
+
+	js := r.checkIfJobHasFinished(ctx, job)
+	if js != JobStatusSuccess {
+		check.Status = false
+		if check != obj.Status.Checks[checkJobStatus] {
+			obj.Status.Checks[checkJobStatus] = check
+			req.UpdateStatus()
+		}
+		return req.CheckFailed(checkName, check, "waiting for job to succeed")
+	}
+
+	// if err := r.helmClient.UninstallRelease(ctx, obj.Namespace, obj.Name); err != nil {
+	// 	return req.CheckFailed(checkName, check, err.Error())
+	// }
+
+	return req.Finalize()
+}
+
+func (r *Reconciler) startInstallJob(req *rApi.Request[*crdsv1.HelmChart]) stepResult.Result {
+	ctx, obj := req.Context(), req.Object
+	check := rApi.Check{Generation: obj.Generation}
+
+	req.LogPreCheck(installOrUpgradeJob)
+	defer req.LogPostCheck(installOrUpgradeJob)
+
+	b, err := templates.ParseBytes(r.templateInstallOrUpgradeJob, map[string]any{
+		"job-name":      fmt.Sprintf("%s-install-or-upgrade", obj.Name),
+		"job-namespace": obj.Namespace,
+		"labels": map[string]string{
+			"kloudlite.io/chart-install-or-upgrade-job": "true",
+		},
+
+		"repo-url":  obj.Spec.ChartRepo.Url,
+		"repo-name": obj.Spec.ChartRepo.Name,
+
+		"chart-name":    obj.Spec.ChartName,
+		"chart-version": obj.Spec.ChartVersion,
+
+		"release-name":      obj.Name,
+		"release-namespace": obj.Namespace,
+		"values-yaml":       obj.Spec.ValuesYaml,
+	})
+	if err != nil {
+		return req.CheckFailed(installOrUpgradeJob, check, err.Error()).Err(nil)
+	}
+
+	if v, ok := obj.Status.ResourceMap["install-job"]; ok {
+		if v.Hash != nil && *v.Hash == fn.HashMD5(b) {
+			req.Logger.Infof("skipping install job, hash matches")
+			return req.Next()
+		}
+	}
+
+	rr, err := r.yamlClient.ApplyYAML(ctx, b)
+	if err != nil {
+		return req.CheckFailed(installOrUpgradeJob, check, err.Error()).Err(nil)
+	}
+
+	req.AddToOwnedResources(rr...)
+	rr[0].Hash = fn.New(fn.HashMD5(b))
+
+	if obj.Status.ResourceMap == nil {
+		obj.Status.ResourceMap = map[string]rApi.ResourceRef{}
+	}
+	obj.Status.ResourceMap["install-job"] = rr[0]
+	if sr := req.UpdateStatus(); !sr.ShouldProceed() {
+		return sr
+	}
+
+	check.Status = true
+	if obj.Status.Checks == nil {
+		obj.Status.Checks = map[string]rApi.Check{}
+	}
+	if check != obj.Status.Checks[installOrUpgradeJob] {
+		obj.Status.Checks[installOrUpgradeJob] = check
+		if sr := req.UpdateStatus(); !sr.ShouldProceed() {
+			return sr
+		}
+		return req.Done().RequeueAfter(1 * time.Second)
+	}
+
+	return req.Next()
+}
+
+func (r *Reconciler) GetPodsForJob(ctx context.Context, jobNamespace string, jobName string) (*corev1.PodList, error) {
+	var podsList corev1.PodList
+
+	if err := r.List(ctx, &podsList, &client.ListOptions{
+		Namespace: jobNamespace,
+		LabelSelector: apiLabels.SelectorFromValidatedSet(map[string]string{
+			"job-name": jobName,
+		}),
+	}); err != nil {
+		return nil, err
+	}
+
+	return &podsList, nil
+
+	// for _, v := range podsList.Items[0].Status.Conditions {
+	// 	if v.Type == corev1.PodReady && v.Status == corev1.ConditionTrue {
+	// 		return JobStatusRunning
+	// 	}
+	// }
+}
+
+func (r *Reconciler) checkInstallJobStatus(req *rApi.Request[*crdsv1.HelmChart]) stepResult.Result {
+	ctx, obj := req.Context(), req.Object
+	check := rApi.Check{Generation: obj.Generation}
+
+	req.LogPreCheck(checkJobStatus)
+	defer req.LogPostCheck(checkJobStatus)
+
+	v, ok := obj.Status.ResourceMap["install-job"]
+	if !ok {
+		return req.CheckFailed(checkJobStatus, check, "install-job key not found in .Status.ResourceMap")
+	}
+
+	job := &batchv1.Job{}
+	if err := r.Get(ctx, fn.NN(v.Namespace, v.Name), job); err != nil {
+		return req.CheckFailed(checkJobStatus, check, "failed to find corresponding job")
+	}
+
+	podList, err := r.GetPodsForJob(ctx, v.Namespace, v.Name)
+	if err != nil {
+		return req.CheckFailed(checkJobStatus, check, "failed to find corresponding pods")
+	}
+
+	// if len(podList.Items) != 1 {
+	// 	return req.CheckFailed(checkJobStatus, check, "could be only one pod")
+	// }
+
+	msg := map[string]string{}
+
+	for i := range podList.Items {
+		for _, cs := range podList.Items[i].Status.ContainerStatuses {
+			if cs.State.Terminated != nil {
+				msg[fmt.Sprintf("%s/%s", podList.Items[i].Name, cs.Name)] = cs.State.Terminated.Message
+			}
+		}
+	}
+
+	b, _ := json.Marshal(msg)
+
+	js := r.checkIfJobHasFinished(ctx, job)
+	check.Status = js == JobStatusSuccess
+	check.Message = string(b)
+	if check != obj.Status.Checks[checkJobStatus] {
+		obj.Status.Checks[checkJobStatus] = check
+		req.UpdateStatus()
+	}
+
+	return req.Next()
+}
+
+func (r *Reconciler) startUninstallJob(req *rApi.Request[*crdsv1.HelmChart]) stepResult.Result {
+	ctx, obj := req.Context(), req.Object
+	check := rApi.Check{Generation: obj.Generation}
+
+	req.LogPreCheck(uninstallJob)
+	defer req.LogPostCheck(uninstallJob)
+
+	b, err := templates.ParseBytes(r.templateUninstallJob, map[string]any{
+		"job-name":      fmt.Sprintf("%s-uninstall", obj.Name),
+		"job-namespace": obj.Namespace,
+		"labels": map[string]string{
+			"kloudlite.io/chart-uninstall-job": "true",
+		},
+
+		"release-name":      obj.Name,
+		"release-namespace": obj.Namespace,
+	})
+	if err != nil {
+		return req.CheckFailed(uninstallJob, check, err.Error()).Err(nil)
+	}
+
+	if v, ok := obj.Status.ResourceMap["uninstall-job"]; ok {
+		if v.Hash != nil && *v.Hash == fn.HashMD5(b) {
+			req.Logger.Infof("skipping uninstall job, hash matches")
+			return req.Next()
+		}
+	}
+
+	rr, err := r.yamlClient.ApplyYAML(ctx, b)
+	if err != nil {
+		return req.CheckFailed(uninstallJob, check, err.Error()).Err(nil)
+	}
+
+	req.AddToOwnedResources(rr...)
+	rr[0].Hash = fn.New(fn.HashMD5(b))
+	req.AddToResourceMap("uninstall-job", rr[0])
+
+	check.Status = true
+	if check != obj.Status.Checks[uninstallJob] {
+		obj.Status.Checks[uninstallJob] = check
+		if sr := req.UpdateStatus(); !sr.ShouldProceed() {
+			return sr
+		}
+	}
+
+	return req.Next()
+}
+
+type JobStatus string
+
+const (
+	JobStatusUnknown JobStatus = "job-status-unknown"
+	JobStatusRunning JobStatus = "job-status-running"
+	JobStatusFailed  JobStatus = "job-status-failed"
+	JobStatusSuccess JobStatus = "job-status-success"
+)
+
+func (r *Reconciler) checkIfJobHasFinished(ctx context.Context, job *batchv1.Job) JobStatus {
+	for _, v := range job.Status.Conditions {
+		if v.Type == batchv1.JobComplete && v.Status == "True" {
+			return JobStatusSuccess
+		}
+
+		if v.Type == batchv1.JobFailed && v.Status == "True" {
+			return JobStatusFailed
+		}
+
+		if v.Type == batchv1.JobSuspended && v.Status == "True" {
+			return JobStatusFailed
+		}
+	}
+
+	return JobStatusUnknown
+}
+
+func (r *Reconciler) addChartRepo(req *rApi.Request[*crdsv1.HelmChart]) stepResult.Result {
+	ctx, obj := req.Context(), req.Object
+	check := rApi.Check{Generation: obj.Generation}
+
+	req.LogPreCheck(ChartRepoAdded)
+	defer req.LogPostCheck(ChartRepoAdded)
+
+	if err := r.helmClient.AddOrUpdateChartRepo(ctx, helm.RepoEntry{
+		Name: obj.Spec.ChartRepo.Name,
+		Url:  obj.Spec.ChartRepo.Url,
+	}); err != nil {
+		return req.CheckFailed(ChartRepoAdded, check, err.Error())
+	}
+
+	check.Status = true
+	if check != obj.Status.Checks[ChartRepoAdded] {
+		obj.Status.Checks[ChartRepoAdded] = check
+		if sr := req.UpdateStatus(); !sr.ShouldProceed() {
+			return sr
+		}
+	}
+
+	return req.Next()
+}
+
+func (r *Reconciler) installOrUpgradeChartRelease(req *rApi.Request[*crdsv1.HelmChart]) stepResult.Result {
+	ctx, obj := req.Context(), req.Object
+	check := rApi.Check{Generation: obj.Generation}
+
+	req.LogPreCheck(ChartReleaseInstalledOrUpgraded)
+	defer req.LogPostCheck(ChartReleaseInstalledOrUpgraded)
+
+	upgradeIfValuesChanged := true
+	if v, ok := obj.Annotations[constants.DoHelmUpgrade]; ok && v == "true" {
+		ann := obj.GetAnnotations()
+		delete(ann, constants.DoHelmUpgrade)
+		obj.SetAnnotations(ann)
+		if err := r.Update(ctx, obj); err != nil {
+			return req.CheckFailed(ChartReleaseInstalledOrUpgraded, check, err.Error())
+		}
+
+		upgradeIfValuesChanged = false
+	}
+
+	// if obj.Name == "mongodb-standalone" {
+	// 	upgradeIfValuesChanged = false
+	// }
+	//
+	rel, err := r.helmClient.InstallOrUpgradeChart(ctx, obj.Namespace, helm.ChartSpec{
+		ReleaseName: obj.Name,
+		Namespace:   obj.Namespace,
+		ChartName:   obj.Spec.ChartName,
+		Version:     obj.Spec.ChartVersion,
+		ValuesYaml:  obj.Spec.ValuesYaml,
+	}, helm.UpgradeOpts{UpgradeOnlyIfValuesChanged: upgradeIfValuesChanged})
+
+	if err != nil {
+		return req.CheckFailed(ChartReleaseInstalledOrUpgraded, check, err.Error()).Err(nil)
+	}
+
+	if rel != nil && rel.Info != nil {
+		obj.Status.ReleaseNotes = rel.Info.Notes
+		obj.Status.ReleaseStatus = rel.Info.Status.String()
+	}
+
+	switch rel.Info.Status {
+	case release.StatusDeployed:
+		check.Status = true
+	case release.StatusFailed:
+		check.Status = false
+		check.Message = obj.Status.Checks[ChartReleaseInstalledOrUpgraded].Message
+	}
+
+	if check != obj.Status.Checks[ChartReleaseInstalledOrUpgraded] {
+		obj.Status.Checks[ChartReleaseInstalledOrUpgraded] = check
+		if sr := req.UpdateStatus(); !sr.ShouldProceed() {
+			return sr
+		}
+	}
+
+	return req.Next()
+}
+
+func (r *Reconciler) SetupWithManager(mgr ctrl.Manager, logger logging.Logger) error {
+	r.Client = mgr.GetClient()
+	r.Scheme = mgr.GetScheme()
+	r.logger = logger.WithName(r.Name)
+	r.yamlClient = kubectl.NewYAMLClientOrDie(mgr.GetConfig())
+	r.helmClient = helm.NewHelmClientOrDie(mgr.GetConfig(), helm.ClientOptions{
+		RepositoryCacheDir:   r.Env.HelmRepositoryCacheDir,
+		RepositoryConfigFile: path.Join(r.Env.HelmRepositoryCacheDir, ".helm-repo-config.yml"),
+		Logger:               r.logger,
+	})
+
+	var err error
+	r.templateInstallOrUpgradeJob, err = templatesDir.ReadFile("templates/install-or-upgrade-job.yml.tpl")
+	if err != nil {
+		return err
+	}
+
+	r.templateUninstallJob, err = templatesDir.ReadFile("templates/uninstall-job.yml.tpl")
+	if err != nil {
+		return err
+	}
+
+	builder := ctrl.NewControllerManagedBy(mgr).For(&crdsv1.HelmChart{})
+	builder.WithOptions(controller.Options{MaxConcurrentReconciles: r.Env.MaxConcurrentReconciles})
+	builder.WithEventFilter(rApi.ReconcileFilter())
+	return builder.Complete(r)
+}
