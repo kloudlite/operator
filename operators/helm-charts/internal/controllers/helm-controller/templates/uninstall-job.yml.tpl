@@ -10,8 +10,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: {{$name}}
-  {{- /* namespace: {{$namespace}} */}}
-  namespace: "kl-init-operators"
+  namespace: {{$namespace}}
   labels: {{$labels | toYAML | nindent 4}}
   ownerReferences: {{$ownerRefs | toYAML| nindent 4}}
 spec:
