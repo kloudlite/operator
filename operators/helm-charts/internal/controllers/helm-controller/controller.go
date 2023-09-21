@@ -51,6 +51,7 @@ const (
 
 const (
 	LabelInstallOrUpgradeJob string = "kloudlite.io/chart-install-or-upgrade-job"
+	LabelResourceGeneration  string = "kloudlite.io/resource-generation"
 	LabelUninstallJob        string = "kloudlite.io/chart-uninstall-job"
 )
 
@@ -98,9 +99,6 @@ func (r *Reconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.
 	}
 
 	req.Object.Status.IsReady = true
-	if step := req.UpdateStatus(); !step.ShouldProceed() {
-		return step.ReconcilerResponse()
-	}
 	return ctrl.Result{RequeueAfter: r.Env.ReconcilePeriod}, nil
 }
 
@@ -149,58 +147,35 @@ func (r *Reconciler) startInstallJob(req *rApi.Request[*crdsv1.HelmChart]) stepR
 	req.LogPreCheck(installOrUpgradeJob)
 	defer req.LogPostCheck(installOrUpgradeJob)
 
-	b, err := templates.ParseBytes(r.templateInstallOrUpgradeJob, map[string]any{
-		"job-name":      getJobName(obj.Name),
-		"job-namespace": obj.Namespace,
-		"labels": map[string]string{
-			LabelInstallOrUpgradeJob: "true",
-		},
-		"owner-refs": []metav1.OwnerReference{fn.AsOwner(obj, true)},
-
-		"repo-url":  obj.Spec.ChartRepo.Url,
-		"repo-name": obj.Spec.ChartRepo.Name,
-
-		"chart-name":    obj.Spec.ChartName,
-		"chart-version": obj.Spec.ChartVersion,
-
-		"release-name":      obj.Name,
-		"release-namespace": obj.Namespace,
-		"values-yaml":       obj.Spec.ValuesYaml,
-	})
-	if err != nil {
-		return req.CheckFailed(installOrUpgradeJob, check, err.Error()).Err(nil)
-	}
-
 	job := &batchv1.Job{}
 	if err := r.Get(ctx, fn.NN(obj.Namespace, getJobName(obj.Name)), job); err != nil {
 		job = nil
 	}
 
-	jobFound := false
+	if job == nil {
+		b, err := templates.ParseBytes(r.templateInstallOrUpgradeJob, map[string]any{
+			"job-name":      getJobName(obj.Name),
+			"job-namespace": obj.Namespace,
+			"labels": map[string]string{
+				LabelInstallOrUpgradeJob: "true",
+				LabelResourceGeneration:  fmt.Sprintf("%d", obj.Generation),
+			},
+			"owner-refs": []metav1.OwnerReference{fn.AsOwner(obj, true)},
 
-	if job != nil {
-		// handle job exists
-		if job.Generation == obj.Generation && job.Labels[LabelInstallOrUpgradeJob] == "true" {
-			jobFound = true
-			// this is our job
-			if !job_manager.HasJobFinished(ctx, r.Client, job) {
-				return req.CheckFailed(installOrUpgradeJob, check, "waiting for job to finish execution")
-			}
-			tlog := job_manager.GetTerminationLog(ctx, r.Client, job.Namespace, job.Name)
-			check.Message = tlog
-		} else {
-			// it is someone else's job, wait for it to complete
-			if !job_manager.HasJobFinished(ctx, r.Client, job) {
-				return req.CheckFailed(installOrUpgradeJob, check, fmt.Sprintf("waiting for previous jobs to finish execution"))
-			}
+			"repo-url":  obj.Spec.ChartRepo.Url,
+			"repo-name": obj.Spec.ChartRepo.Name,
 
-			if err := job_manager.DeleteJob(ctx, r.Client, job.Namespace, job.Name); err != nil {
-				return req.CheckFailed(installOrUpgradeJob, check, err.Error())
-			}
+			"chart-name":    obj.Spec.ChartName,
+			"chart-version": obj.Spec.ChartVersion,
+
+			"release-name":      obj.Name,
+			"release-namespace": obj.Namespace,
+			"values-yaml":       obj.Spec.ValuesYaml,
+		})
+		if err != nil {
+			return req.CheckFailed(installOrUpgradeJob, check, err.Error()).Err(nil)
 		}
-	}
 
-	if !jobFound {
 		rr, err := r.yamlClient.ApplyYAML(ctx, b)
 		if err != nil {
 			return req.CheckFailed(installOrUpgradeJob, check, err.Error())
@@ -210,7 +185,24 @@ func (r *Reconciler) startInstallJob(req *rApi.Request[*crdsv1.HelmChart]) stepR
 		return req.Done().RequeueAfter(1 * time.Second).Err(fmt.Errorf("waiting for job to be created"))
 	}
 
-	check.Status = true
+	isMyJob := job.Labels[LabelResourceGeneration] == fmt.Sprintf("%d", obj.Generation) && job.Labels[LabelInstallOrUpgradeJob] == "true"
+
+	if !isMyJob {
+		if !job_manager.HasJobFinished(ctx, r.Client, job) {
+			return req.CheckFailed(installOrUpgradeJob, check, fmt.Sprintf("waiting for previous jobs to finish execution"))
+		}
+
+		if err := job_manager.DeleteJob(ctx, r.Client, job.Namespace, job.Name); err != nil {
+			return req.CheckFailed(installOrUpgradeJob, check, err.Error())
+		}
+	}
+
+	if !job_manager.HasJobFinished(ctx, r.Client, job) {
+		return req.CheckFailed(installOrUpgradeJob, check, "waiting for job to finish execution")
+	}
+
+	check.Message = job_manager.GetTerminationLog(ctx, r.Client, job.Namespace, job.Name)
+	check.Status = job.Status.Succeeded > 0
 	if obj.Status.Checks == nil {
 		obj.Status.Checks = map[string]rApi.Check{}
 	}
@@ -231,59 +223,54 @@ func (r *Reconciler) startUninstallJob(req *rApi.Request[*crdsv1.HelmChart]) ste
 	req.LogPreCheck(uninstallJob)
 	defer req.LogPostCheck(uninstallJob)
 
-	b, err := templates.ParseBytes(r.templateUninstallJob, map[string]any{
-		"job-name":      getJobName(obj.Name),
-		"job-namespace": obj.Namespace,
-		"labels": map[string]string{
-			LabelUninstallJob: "true",
-		},
-		"owner-refs": []metav1.OwnerReference{fn.AsOwner(obj, true)},
-
-		"release-name":      obj.Name,
-		"release-namespace": obj.Namespace,
-	})
-	if err != nil {
-		return req.CheckFailed(uninstallJob, check, err.Error()).Err(nil)
-	}
-
 	job := &batchv1.Job{}
 	if err := r.Get(ctx, fn.NN(obj.Namespace, getJobName(obj.Name)), job); err != nil {
 		job = nil
 	}
 
-	jobFound := false
-	if job != nil {
-		// job exists
-		if job.Generation == obj.Generation && job.Labels[LabelUninstallJob] == "true" {
-			jobFound = true
-			// this is our job
-			if !job_manager.HasJobFinished(ctx, r.Client, job) {
-				return req.CheckFailed(uninstallJob, check, "waiting for job to finish execution")
-			}
-			tlog := job_manager.GetTerminationLog(ctx, r.Client, job.Namespace, job.Name)
-			check.Message = tlog
-		} else {
-			// it is someone else's job, wait for it to complete
-			if !job_manager.HasJobFinished(ctx, r.Client, job) {
-				return req.CheckFailed(uninstallJob, check, fmt.Sprintf("waiting for previous jobs to finish execution"))
-			}
-			// deleting that job
-			if err := job_manager.DeleteJob(ctx, r.Client, job.Namespace, job.Name); err != nil {
-				return req.CheckFailed(uninstallJob, check, err.Error())
-			}
-		}
-	}
+	if job == nil {
+		b, err := templates.ParseBytes(r.templateUninstallJob, map[string]any{
+			"job-name":      getJobName(obj.Name),
+			"job-namespace": obj.Namespace,
+			"labels": map[string]string{
+				LabelUninstallJob: "true",
+			},
+			"owner-refs": []metav1.OwnerReference{fn.AsOwner(obj, true)},
 
-	if !jobFound {
+			"release-name":      obj.Name,
+			"release-namespace": obj.Namespace,
+		})
+		if err != nil {
+			return req.CheckFailed(uninstallJob, check, err.Error()).Err(nil)
+		}
+
 		rr, err := r.yamlClient.ApplyYAML(ctx, b)
 		if err != nil {
 			return req.CheckFailed(uninstallJob, check, err.Error()).Err(nil)
 		}
 
 		req.AddToOwnedResources(rr...)
+		return req.Done().RequeueAfter(1 * time.Second).Err(fmt.Errorf("waiting for job to be created"))
 	}
 
-	check.Status = true
+	isMyJob := job.Labels[LabelResourceGeneration] == fmt.Sprintf("%d", obj.Generation) && job.Labels[LabelInstallOrUpgradeJob] == "true"
+
+	if !isMyJob {
+		if !job_manager.HasJobFinished(ctx, r.Client, job) {
+			return req.CheckFailed(uninstallJob, check, fmt.Sprintf("waiting for previous jobs to finish execution"))
+		}
+		// deleting that job
+		if err := job_manager.DeleteJob(ctx, r.Client, job.Namespace, job.Name); err != nil {
+			return req.CheckFailed(uninstallJob, check, err.Error())
+		}
+	}
+
+	if !job_manager.HasJobFinished(ctx, r.Client, job) {
+		return req.CheckFailed(uninstallJob, check, "waiting for job to finish execution")
+	}
+
+	check.Message = job_manager.GetTerminationLog(ctx, r.Client, job.Namespace, job.Name)
+	check.Status = job.Status.Succeeded > 0
 	if check != obj.Status.Checks[uninstallJob] {
 		obj.Status.Checks[uninstallJob] = check
 		if sr := req.UpdateStatus(); !sr.ShouldProceed() {
