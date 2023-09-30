@@ -17,13 +17,13 @@ import (
 	stepResult "github.com/kloudlite/operator/pkg/operator/step-result"
 	"github.com/kloudlite/operator/pkg/templates"
 	batchv1 "k8s.io/api/batch/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 type Reconciler struct {
@@ -34,6 +34,7 @@ type Reconciler struct {
 	Name       string
 	yamlClient kubectl.YAMLClient
 
+	templateJobRBAC             []byte
 	templateInstallOrUpgradeJob []byte
 	templateUninstallJob        []byte
 }
@@ -47,16 +48,22 @@ const (
 	uninstallJob              string = "uninstall-job"
 	checkJobStatus            string = "check-job-status"
 	waitForPrevJobsToComplete string = "wait-for-prev-jobs-to-complete"
+	ensureJobRBAC             string = "ensure-job-rbac"
 )
 
 const (
 	LabelInstallOrUpgradeJob string = "kloudlite.io/chart-install-or-upgrade-job"
 	LabelResourceGeneration  string = "kloudlite.io/resource-generation"
 	LabelUninstallJob        string = "kloudlite.io/chart-uninstall-job"
+	LabelHelmChartName       string = "kloudlite.io/helm-chart.name"
 )
 
 func getJobName(resName string) string {
 	return fmt.Sprintf("helm-job-%s", resName)
+}
+
+func getJobSvcAccountName() string {
+	return "helm-job-svc-account"
 }
 
 //go:embed templates/*
@@ -94,6 +101,10 @@ func (r *Reconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.
 		return step.ReconcilerResponse()
 	}
 
+	if step := r.ensureJobRBAC(req); !step.ShouldProceed() {
+		return step.ReconcilerResponse()
+	}
+
 	if step := r.startInstallJob(req); !step.ShouldProceed() {
 		return step.ReconcilerResponse()
 	}
@@ -103,41 +114,50 @@ func (r *Reconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.
 }
 
 func (r *Reconciler) finalize(req *rApi.Request[*crdsv1.HelmChart]) stepResult.Result {
-	ctx, obj := req.Context(), req.Object
-
 	checkName := "finalize"
 
 	req.LogPreCheck(checkName)
 	defer req.LogPostCheck(checkName)
 
-	check := rApi.Check{Generation: obj.Generation}
-
 	if step := r.startUninstallJob(req); !step.ShouldProceed() {
 		return step
 	}
 
-	for i := range obj.Status.Resources {
-		res := obj.Status.Resources[i]
-		resObj := unstructured.Unstructured{
-			Object: map[string]any{
-				"apiVersion": res.APIVersion,
-				"kind":       res.Kind,
-				"metadata": map[string]any{
-					"name":      res.Name,
-					"namespace": res.Namespace,
-				},
-			},
-		}
-		_ = resObj
-		req.Logger.Infof("deleting child resource: apiVersion: %s, kind: %s, %s/%s", res.APIVersion, res.Kind, res.Namespace, res.Name)
-		if err := r.Delete(ctx, &resObj); err != nil {
-			if !errors.IsNotFound(err) {
-				return req.CheckFailed(checkName, check, err.Error())
-			}
-		}
+	if step := req.CleanupOwnedResources(); !step.ShouldProceed() {
+		return step
 	}
 
 	return req.Finalize()
+}
+
+func (r *Reconciler) ensureJobRBAC(req *rApi.Request[*crdsv1.HelmChart]) stepResult.Result {
+	ctx, obj := req.Context(), req.Object
+	check := rApi.Check{Generation: obj.Generation}
+
+	req.LogPreCheck(ensureJobRBAC)
+	defer req.LogPostCheck(ensureJobRBAC)
+
+	b, err := templates.ParseBytes(r.templateJobRBAC, map[string]any{
+		"service-account-name":      getJobSvcAccountName(),
+		"service-account-namespace": r.Env.RunningInNamespace,
+	})
+	if err != nil {
+		return req.CheckFailed(ensureJobRBAC, check, err.Error()).Err(nil)
+	}
+
+	if _, err = r.yamlClient.ApplyYAML(ctx, b); err != nil {
+		return req.CheckFailed(ensureJobRBAC, check, err.Error()).Err(nil)
+	}
+
+	check.Status = true
+	if check != obj.Status.Checks[ensureJobRBAC] {
+		obj.Status.Checks[ensureJobRBAC] = check
+		if sr := req.UpdateStatus(); !sr.ShouldProceed() {
+			return sr
+		}
+	}
+
+	return req.Next()
 }
 
 func (r *Reconciler) startInstallJob(req *rApi.Request[*crdsv1.HelmChart]) stepResult.Result {
@@ -148,19 +168,20 @@ func (r *Reconciler) startInstallJob(req *rApi.Request[*crdsv1.HelmChart]) stepR
 	defer req.LogPostCheck(installOrUpgradeJob)
 
 	job := &batchv1.Job{}
-	if err := r.Get(ctx, fn.NN(obj.Namespace, getJobName(obj.Name)), job); err != nil {
+	if err := r.Get(ctx, fn.NN(r.Env.RunningInNamespace, getJobName(obj.Name)), job); err != nil {
 		job = nil
 	}
 
 	if job == nil {
 		b, err := templates.ParseBytes(r.templateInstallOrUpgradeJob, map[string]any{
 			"job-name":      getJobName(obj.Name),
-			"job-namespace": obj.Namespace,
+			"job-namespace": r.Env.RunningInNamespace,
 			"labels": map[string]string{
 				LabelInstallOrUpgradeJob: "true",
+				LabelHelmChartName:       obj.Name,
 				LabelResourceGeneration:  fmt.Sprintf("%d", obj.Generation),
 			},
-			"owner-refs": []metav1.OwnerReference{fn.AsOwner(obj, true)},
+			"service-account-name": getJobSvcAccountName(),
 
 			"repo-url":  obj.Spec.ChartRepo.Url,
 			"repo-name": obj.Spec.ChartRepo.Name,
@@ -182,35 +203,39 @@ func (r *Reconciler) startInstallJob(req *rApi.Request[*crdsv1.HelmChart]) stepR
 		}
 
 		req.AddToOwnedResources(rr...)
-		return req.Done().RequeueAfter(1 * time.Second).Err(fmt.Errorf("waiting for job to be created"))
+		return req.Done().RequeueAfter(1 * time.Second).Err(fmt.Errorf("waiting for job to be created")).Err(nil)
 	}
 
 	isMyJob := job.Labels[LabelResourceGeneration] == fmt.Sprintf("%d", obj.Generation) && job.Labels[LabelInstallOrUpgradeJob] == "true"
 
 	if !isMyJob {
 		if !job_manager.HasJobFinished(ctx, r.Client, job) {
-			return req.CheckFailed(installOrUpgradeJob, check, fmt.Sprintf("waiting for previous jobs to finish execution"))
+			return req.CheckFailed(installOrUpgradeJob, check, fmt.Sprintf("waiting for previous jobs to finish execution")).Err(nil)
 		}
 
 		if err := job_manager.DeleteJob(ctx, r.Client, job.Namespace, job.Name); err != nil {
 			return req.CheckFailed(installOrUpgradeJob, check, err.Error())
 		}
+
+		return req.Done().RequeueAfter(1 * time.Second)
 	}
 
 	if !job_manager.HasJobFinished(ctx, r.Client, job) {
-		return req.CheckFailed(installOrUpgradeJob, check, "waiting for job to finish execution")
+		return req.CheckFailed(installOrUpgradeJob, check, "waiting for job to finish execution").Err(nil)
 	}
 
 	check.Message = job_manager.GetTerminationLog(ctx, r.Client, job.Namespace, job.Name)
 	check.Status = job.Status.Succeeded > 0
-	if obj.Status.Checks == nil {
-		obj.Status.Checks = map[string]rApi.Check{}
-	}
+
 	if check != obj.Status.Checks[installOrUpgradeJob] {
 		obj.Status.Checks[installOrUpgradeJob] = check
 		if sr := req.UpdateStatus(); !sr.ShouldProceed() {
 			return sr
 		}
+	}
+
+	if !check.Status {
+		return req.Done()
 	}
 
 	return req.Next()
@@ -224,18 +249,20 @@ func (r *Reconciler) startUninstallJob(req *rApi.Request[*crdsv1.HelmChart]) ste
 	defer req.LogPostCheck(uninstallJob)
 
 	job := &batchv1.Job{}
-	if err := r.Get(ctx, fn.NN(obj.Namespace, getJobName(obj.Name)), job); err != nil {
+	if err := r.Get(ctx, fn.NN(r.Env.RunningInNamespace, getJobName(obj.Name)), job); err != nil {
 		job = nil
 	}
 
 	if job == nil {
 		b, err := templates.ParseBytes(r.templateUninstallJob, map[string]any{
 			"job-name":      getJobName(obj.Name),
-			"job-namespace": obj.Namespace,
+			"job-namespace": r.Env.RunningInNamespace,
 			"labels": map[string]string{
-				LabelUninstallJob: "true",
+				LabelHelmChartName:      obj.Name,
+				LabelUninstallJob:       "true",
+				LabelResourceGeneration: fmt.Sprintf("%d", obj.Generation),
 			},
-			"owner-refs": []metav1.OwnerReference{fn.AsOwner(obj, true)},
+			"service-account-name": getJobSvcAccountName(),
 
 			"release-name":      obj.Name,
 			"release-namespace": obj.Namespace,
@@ -250,23 +277,24 @@ func (r *Reconciler) startUninstallJob(req *rApi.Request[*crdsv1.HelmChart]) ste
 		}
 
 		req.AddToOwnedResources(rr...)
-		return req.Done().RequeueAfter(1 * time.Second).Err(fmt.Errorf("waiting for job to be created"))
+		return req.Done().RequeueAfter(1 * time.Second).Err(fmt.Errorf("waiting for job to be created")).Err(nil)
 	}
 
-	isMyJob := job.Labels[LabelResourceGeneration] == fmt.Sprintf("%d", obj.Generation) && job.Labels[LabelInstallOrUpgradeJob] == "true"
+	isMyJob := job.Labels[LabelResourceGeneration] == fmt.Sprintf("%d", obj.Generation) && job.Labels[LabelUninstallJob] == "true"
 
 	if !isMyJob {
 		if !job_manager.HasJobFinished(ctx, r.Client, job) {
-			return req.CheckFailed(uninstallJob, check, fmt.Sprintf("waiting for previous jobs to finish execution"))
+			return req.CheckFailed(uninstallJob, check, fmt.Sprintf("waiting for previous jobs to finish execution")).Err(nil)
 		}
 		// deleting that job
 		if err := job_manager.DeleteJob(ctx, r.Client, job.Namespace, job.Name); err != nil {
 			return req.CheckFailed(uninstallJob, check, err.Error())
 		}
+		return req.Done().RequeueAfter(1 * time.Second)
 	}
 
 	if !job_manager.HasJobFinished(ctx, r.Client, job) {
-		return req.CheckFailed(uninstallJob, check, "waiting for job to finish execution")
+		return req.CheckFailed(uninstallJob, check, "waiting for job to finish execution").Err(nil)
 	}
 
 	check.Message = job_manager.GetTerminationLog(ctx, r.Client, job.Namespace, job.Name)
@@ -276,6 +304,10 @@ func (r *Reconciler) startUninstallJob(req *rApi.Request[*crdsv1.HelmChart]) ste
 		if sr := req.UpdateStatus(); !sr.ShouldProceed() {
 			return sr
 		}
+	}
+
+	if !check.Status {
+		return req.Done()
 	}
 
 	return req.Next()
@@ -288,6 +320,11 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager, logger logging.Logger) e
 	r.yamlClient = kubectl.NewYAMLClientOrDie(mgr.GetConfig())
 
 	var err error
+	r.templateJobRBAC, err = templatesDir.ReadFile("templates/job-rbac.yml.tpl")
+	if err != nil {
+		return err
+	}
+
 	r.templateInstallOrUpgradeJob, err = templatesDir.ReadFile("templates/install-or-upgrade-job.yml.tpl")
 	if err != nil {
 		return err
@@ -299,7 +336,15 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager, logger logging.Logger) e
 	}
 
 	builder := ctrl.NewControllerManagedBy(mgr).For(&crdsv1.HelmChart{})
-	builder.Owns(&batchv1.Job{})
+	builder.Watches(
+		&source.Kind{Type: &batchv1.Job{}},
+		handler.EnqueueRequestsFromMapFunc(func(obj client.Object) []reconcile.Request {
+			r.logger.Debugf("watch event received for job: %s/%s", obj.GetNamespace(), obj.GetName())
+			if obj.GetNamespace() == r.Env.RunningInNamespace && obj.GetLabels()[LabelHelmChartName] != "" {
+				return []reconcile.Request{{NamespacedName: fn.NN(obj.GetNamespace(), obj.GetLabels()[LabelHelmChartName])}}
+			}
+			return nil
+		}))
 	builder.WithOptions(controller.Options{MaxConcurrentReconciles: r.Env.MaxConcurrentReconciles})
 	builder.WithEventFilter(rApi.ReconcileFilter())
 	return builder.Complete(r)
