@@ -36,6 +36,8 @@ spec:
             description: ClusterSpec defines the desired state of Cluster For now
               considered basis on AWS Specific
             properties:
+              accountId:
+                type: string
               accountName:
                 type: string
               agentHelmValuesRef:
@@ -165,8 +167,6 @@ spec:
                 - key
                 - name
                 type: object
-              region:
-                type: string
               vpc:
                 type: string
             required:
@@ -174,7 +174,6 @@ spec:
             - availabilityMode
             - cloudProvider
             - credentialsRef
-            - region
             type: object
           status:
             properties:

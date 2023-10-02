@@ -48,7 +48,7 @@ spec:
 
             unzip terraform.zip
 
-            pushd "infrastructures/template-aws-k3s-HA"
+            pushd "infrastructures/templates/aws-k3s-HA"
 
             envsubst < terraform.tf.tpl > terraform.tf
             

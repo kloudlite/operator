@@ -124,7 +124,6 @@ table.insert(snippets, commonTypesImports)
 --   )
 -- )
 
-
 -- local stexpr = postfix({ trig = ".stexpr" },
 --   fmta([[
 -- if step := <expr>; !step.ShouldProceed() {
@@ -139,7 +138,7 @@ table.insert(snippets, commonTypesImports)
 --   })
 -- )
 
-local stexpr = postfix({ trig = ".stexpr" }, {
+local stexpr = postfix(".stexpr", {
   f(function(_, parent)
     return "[" .. parent.snippet.env.POSTFIX_MATCH .. "]"
   end, {}),

@@ -39,8 +39,8 @@ type AWSClusterConfig struct {
 // ClusterSpec defines the desired state of Cluster
 // For now considered basis on AWS Specific
 type ClusterSpec struct {
-	Region      string `json:"region"`
-	AccountName string `json:"accountName"`
+	AccountName string  `json:"accountName"`
+	AccountId   *string `json:"accountId,omitempty"`
 
 	CredentialsRef common_types.SecretRef `json:"credentialsRef"`
 

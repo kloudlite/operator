@@ -50,7 +50,7 @@ spec:
 
             unzip terraform.zip && rm terraform.zip
 
-            pushd "infrastructures/template-aws-s3-bucket"
+            pushd "infrastructures/templates/aws-s3-bucket"
 
             envsubst < terraform.tf.tpl > terraform.tf
             

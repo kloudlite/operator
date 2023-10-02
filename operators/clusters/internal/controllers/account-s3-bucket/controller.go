@@ -55,7 +55,7 @@ const (
 )
 
 func getJobName(resourceName string) string {
-	return fmt.Sprintf("%s-s3-bucket-job", resourceName)
+	return fmt.Sprintf("%s-s3", resourceName)
 }
 
 // +kubebuilder:rbac:groups=clusters.kloudlite.io,resources=clusters,verbs=get;list;watch;create;update;patch;delete
@@ -121,18 +121,23 @@ func (r *Reconciler) finalize(req *rApi.Request[*clustersv1.AccountS3Bucket]) st
 		return step
 	}
 
-	if !obj.Status.Checks[BucketDestroyJob].Status {
-		check.Status = false
-		check.Message = job_manager.GetTerminationLog(ctx, r.Client, obj.Namespace, getJobName(obj.Name))
-		if check != obj.Status.Checks[checkName] {
-			obj.Status.Checks[checkName] = check
-			if sr := req.UpdateStatus(); !sr.ShouldProceed() {
-				return sr
-			}
+	if !obj.Status.Checks[BucketCreateJob].Status {
+		return req.Finalize()
+	}
+
+	check.Message = job_manager.GetTerminationLog(ctx, r.Client, obj.Namespace, getJobName(obj.Name))
+	check.Status = false
+
+	req.Logger.Infof("finalizing failed for account-s3-bucket %s", obj.Name)
+
+	if check != obj.Status.Checks[checkName] {
+		obj.Status.Checks[checkName] = check
+		if sr := req.UpdateStatus(); !sr.ShouldProceed() {
+			return sr
 		}
 	}
 
-	return req.Finalize()
+	return req.Done()
 }
 
 func (r *Reconciler) StartBucketCreateJob(req *rApi.Request[*clustersv1.AccountS3Bucket]) stepResult.Result {
@@ -213,6 +218,10 @@ func (r *Reconciler) StartBucketCreateJob(req *rApi.Request[*clustersv1.AccountS
 		}
 	}
 
+	if !check.Status {
+		return req.CheckFailed(BucketCreateJob, check, "bucket creation job failed")
+	}
+
 	return req.Next()
 }
 
@@ -273,7 +282,8 @@ func (r *Reconciler) StartBucketDestroyJob(req *rApi.Request[*clustersv1.Account
 			return req.CheckFailed(BucketDestroyJob, check, "waiting for previous jobs to finish execution")
 		}
 		if err := r.Delete(ctx, job); err != nil {
-			if apiErrors.IsNotFound(err) {
+			if !apiErrors.IsNotFound(err) {
+				return req.CheckFailed(BucketDestroyJob, check, err.Error())
 			}
 		}
 	}

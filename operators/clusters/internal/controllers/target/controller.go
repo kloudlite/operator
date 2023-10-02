@@ -24,6 +24,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 type ClusterReconciler struct {
@@ -69,10 +70,6 @@ func (r *ClusterReconciler) Reconcile(ctx context.Context, request ctrl.Request)
 	req, err := rApi.NewRequest(context.WithValue(ctx, "logger", r.logger), r.Client, request.NamespacedName, &clustersv1.Cluster{})
 	if err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
-	}
-
-	if req.Object.Name != "nxt-cluster" {
-		return ctrl.Result{}, nil
 	}
 
 	req.LogPreReconcile()
@@ -135,10 +132,14 @@ func (r *ClusterReconciler) finalize(req *rApi.Request[*clustersv1.Cluster]) ste
 }
 
 func (r *ClusterReconciler) parseSpecToVarFileJson(obj *clustersv1.Cluster, accessKeyId string, secretAccessKey string) (string, error) {
+	if obj.Spec.AWS == nil {
+		return "", fmt.Errorf(".spec.aws is nil")
+	}
+
 	valuesBytes, err := json.Marshal(map[string]any{
 		"aws_access_key": accessKeyId,
 		"aws_secret_key": secretAccessKey,
-		"aws_region":     obj.Spec.Region,
+		"aws_region":     obj.Spec.AWS.Region,
 		"aws_ami":        obj.Spec.AWS.AMI,
 
 		"aws_iam_instance_profile_role": obj.Spec.AWS.IAMInstanceProfileRole,
@@ -160,36 +161,6 @@ func (r *ClusterReconciler) parseSpecToVarFileJson(obj *clustersv1.Cluster, acce
 
 			return m
 		}(),
-
-		// "ec2_nodes_config": map[string]any{
-		// 	"master-1": map[string]any{
-		// 		"az":               "ap-south-1a",
-		// 		"instance_type":    "c6a.large",
-		// 		"root_volume_size": 50,
-		// 		"role":             "primary-master",
-		// 	},
-		//
-		// 	"master-2": map[string]any{
-		// 		"az":               "ap-south-1b",
-		// 		"instance_type":    "c6a.large",
-		// 		"root_volume_size": 50,
-		// 		"role":             "secondary-master",
-		// 	},
-		//
-		// 	"master-3": map[string]any{
-		// 		"az":               "ap-south-1c",
-		// 		"instance_type":    "c6a.large",
-		// 		"root_volume_size": 50,
-		// 		"role":             "secondary-master",
-		// 	},
-		//
-		// 	"agent-1": map[string]any{
-		// 		"az":               "ap-south-1b",
-		// 		"instance_type":    "c6a.large",
-		// 		"root_volume_size": 50,
-		// 		"role":             "agent",
-		// 	},
-		// },
 
 		"spot_settings": map[string]any{
 			"enabled": obj.Spec.AWS.SpotSettings != nil,
@@ -222,29 +193,6 @@ func (r *ClusterReconciler) parseSpecToVarFileJson(obj *clustersv1.Cluster, acce
 			return m
 		}(),
 
-		// "spot_nodes_config": map[string]any{
-		// 	"spot-1": map[string]any{
-		// 		"vcpu": map[string]any{
-		// 			"min": 1,
-		// 			"max": 2,
-		// 		},
-		// 		"memory_per_vcpu": map[string]any{
-		// 			"min": 1.5,
-		// 			"max": 2,
-		// 		},
-		// 	},
-		// 	"spot-2": map[string]any{
-		// 		"vcpu": map[string]any{
-		// 			"min": 1,
-		// 			"max": 2,
-		// 		},
-		// 		"memory_per_vcpu": map[string]any{
-		// 			"min": 1.5,
-		// 			"max": 2,
-		// 		},
-		// 	},
-		// },
-
 		"disable_ssh": obj.Spec.DisableSSH,
 	})
 
@@ -254,17 +202,29 @@ func (r *ClusterReconciler) parseSpecToVarFileJson(obj *clustersv1.Cluster, acce
 	return string(valuesBytes), nil
 }
 
-func (r *ClusterReconciler) findAccountS3Bucket(ctx context.Context, namespace string) (*clustersv1.AccountS3Bucket, error) {
+func (r *ClusterReconciler) findAccountS3Bucket(ctx context.Context, obj *clustersv1.Cluster) (*clustersv1.AccountS3Bucket, error) {
 	var bucketList clustersv1.AccountS3BucketList
-	if err := r.List(ctx, &bucketList, client.InNamespace(namespace)); err != nil {
+	if err := r.List(ctx, &bucketList, client.InNamespace(obj.Namespace)); err != nil {
 		return nil, err
 	}
 	if len(bucketList.Items) == 0 {
-		return nil, fmt.Errorf("no account-s3-bucket found in namespace %s", namespace)
+		// TODO: create account-s3-bucket
+		s3Bucket := &clustersv1.AccountS3Bucket{ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("kl-%s", obj.Spec.AccountId), Namespace: obj.Namespace}}
+		if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, s3Bucket, func() error {
+			s3Bucket.Spec = clustersv1.AccountS3BucketSpec{
+				AccountName:  obj.Spec.AccountName,
+				BucketRegion: r.Env.KlS3BucketRegion,
+			}
+			return nil
+		}); err != nil {
+			return nil, err
+		}
+		return nil, fmt.Errorf("waiting for account-s3-bucket to reconcile")
+		// return nil, fmt.Errorf("no account-s3-bucket found in namespace %s", namespace)
 	}
 
 	if len(bucketList.Items) != 1 {
-		return nil, fmt.Errorf("multiple account-s3-bucket found in namespace %s", namespace)
+		return nil, fmt.Errorf("multiple account-s3-bucket found in namespace %s", obj.Namespace)
 	}
 
 	if !bucketList.Items[0].Status.IsReady {
@@ -281,7 +241,7 @@ func (r *ClusterReconciler) startClusterApplyJob(req *rApi.Request[*clustersv1.C
 	req.LogPreCheck(clusterApplyJob)
 	defer req.LogPostCheck(clusterApplyJob)
 
-	bucket, err := r.findAccountS3Bucket(ctx, obj.Namespace)
+	bucket, err := r.findAccountS3Bucket(ctx, obj)
 	if err != nil {
 		return req.CheckFailed(clusterApplyJob, check, err.Error())
 	}
@@ -297,7 +257,7 @@ func (r *ClusterReconciler) startClusterApplyJob(req *rApi.Request[*clustersv1.C
 			return req.CheckFailed(clusterApplyJob, check, err.Error())
 		}
 
-		valuesJson, err := r.parseSpecToVarFileJson(obj, string(credsSecret.Data["AWS_ACCESS_KEY_ID"]), string(credsSecret.Data["AWS_SECRET_ACCESS_KEY"]))
+		valuesJson, err := r.parseSpecToVarFileJson(obj, string(credsSecret.Data["accessKey"]), string(credsSecret.Data["accessSecret"]))
 		if err != nil {
 			return req.CheckFailed(clusterApplyJob, check, err.Error())
 		}
@@ -315,8 +275,8 @@ func (r *ClusterReconciler) startClusterApplyJob(req *rApi.Request[*clustersv1.C
 			"aws-s3-bucket-region":   bucket.Spec.BucketRegion,
 			"aws-s3-bucket-filepath": getBucketFilePath(obj.Spec.AccountName, obj.Name),
 
-			"aws-access-key-id":     string(credsSecret.Data["AWS_ACCESS_KEY_ID"]),
-			"aws-secret-access-key": string(credsSecret.Data["AWS_SECRET_ACCESS_KEY"]),
+			"aws-access-key-id":     string(credsSecret.Data["accessKey"]),
+			"aws-secret-access-key": string(credsSecret.Data["accessSecret"]),
 
 			"values.json": string(valuesJson),
 		})
@@ -343,6 +303,8 @@ func (r *ClusterReconciler) startClusterApplyJob(req *rApi.Request[*clustersv1.C
 		if err := job_manager.DeleteJob(ctx, r.Client, job.Namespace, job.Name); err != nil {
 			return req.CheckFailed(clusterApplyJob, check, err.Error())
 		}
+
+		return req.Done().RequeueAfter(1 * time.Second)
 	}
 
 	if !job_manager.HasJobFinished(ctx, r.Client, job) {
@@ -368,7 +330,7 @@ func (r *ClusterReconciler) startClusterDestroyJob(req *rApi.Request[*clustersv1
 	req.LogPreCheck(clusterDestroyJob)
 	defer req.LogPostCheck(clusterDestroyJob)
 
-	bucket, err := r.findAccountS3Bucket(ctx, obj.Namespace)
+	bucket, err := r.findAccountS3Bucket(ctx, obj)
 	if err != nil {
 		return req.CheckFailed(clusterDestroyJob, check, err.Error())
 	}
@@ -384,7 +346,7 @@ func (r *ClusterReconciler) startClusterDestroyJob(req *rApi.Request[*clustersv1
 			return req.CheckFailed(clusterApplyJob, check, err.Error()).Err(nil)
 		}
 
-		valuesJson, err := r.parseSpecToVarFileJson(obj, string(credsSecret.Data["AWS_ACCESS_KEY_ID"]), string(credsSecret.Data["AWS_SECRET_ACCESS_KEY"]))
+		valuesJson, err := r.parseSpecToVarFileJson(obj, string(credsSecret.Data["accessKey"]), string(credsSecret.Data["accessSecret"]))
 		if err != nil {
 			return req.CheckFailed(clusterApplyJob, check, err.Error())
 		}
@@ -402,8 +364,8 @@ func (r *ClusterReconciler) startClusterDestroyJob(req *rApi.Request[*clustersv1
 			"aws-s3-bucket-region":   bucket.Spec.BucketRegion,
 			"aws-s3-bucket-filepath": getBucketFilePath(obj.Spec.AccountName, obj.Name),
 
-			"aws-access-key-id":     string(credsSecret.Data["AWS_ACCESS_KEY_ID"]),
-			"aws-secret-access-key": string(credsSecret.Data["AWS_SECRET_ACCESS_KEY"]),
+			"aws-access-key-id":     string(credsSecret.Data["accessKey"]),
+			"aws-secret-access-key": string(credsSecret.Data["accessSecret"]),
 
 			"values.json": string(valuesJson),
 		})
@@ -430,6 +392,8 @@ func (r *ClusterReconciler) startClusterDestroyJob(req *rApi.Request[*clustersv1
 		if err := job_manager.DeleteJob(ctx, r.Client, job.Namespace, job.Name); err != nil {
 			return req.CheckFailed(clusterDestroyJob, check, err.Error())
 		}
+
+		return req.Done().RequeueAfter(1 * time.Second)
 	}
 
 	if !job_manager.HasJobFinished(ctx, r.Client, job) {

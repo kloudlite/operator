@@ -25,6 +25,7 @@ spec:
       containers:
       - name: iac
         image: ghcr.io/kloudlite/infrastructure-as-code:v1.0.5-nightly
+        imagePullPolicy: Always
         env:
           - name: AWS_S3_BUCKET_NAME
             value: {{$awsS3BucketName}}
@@ -45,7 +46,7 @@ spec:
 
             unzip terraform.zip
 
-            pushd "infrastructures/template-aws-k3s-HA"
+            pushd "infrastructures/templates/aws-k3s-HA"
 
             envsubst < terraform.tf.tpl > terraform.tf
             
