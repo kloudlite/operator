@@ -203,15 +203,26 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager, logger logging.Logger) e
 	r.yamlClient = kubectl.NewYAMLClientOrDie(mgr.GetConfig())
 
 	builder := ctrl.NewControllerManagedBy(mgr).For(&clustersv1.Node{})
+
 	builder.Watches(
-		&source.Kind{Type: &corev1.Node{}},
-		handler.EnqueueRequestsFromMapFunc(func(obj client.Object) []reconcile.Request {
+		&corev1.Node{},
+		handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []reconcile.Request {
 			if v, ok := obj.GetLabels()[constants.NodeNameKey]; ok {
 				return []reconcile.Request{{NamespacedName: fn.NN("", v)}}
 			}
 			return nil
 		}),
 	)
+
+	// builder.Watches(
+	// 	&source.Kind{Type: &corev1.Node{}},
+	// 	handler.EnqueueRequestsFromMapFunc(func(obj client.Object) []reconcile.Request {
+	// 		if v, ok := obj.GetLabels()[constants.NodeNameKey]; ok {
+	// 			return []reconcile.Request{{NamespacedName: fn.NN("", v)}}
+	// 		}
+	// 		return nil
+	// 	}),
+	// )
 	builder.WithOptions(controller.Options{MaxConcurrentReconciles: r.Env.MaxConcurrentReconciles})
 	builder.WithEventFilter(rApi.ReconcileFilter())
 	return builder.Complete(r)
