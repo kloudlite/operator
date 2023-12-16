@@ -24,7 +24,30 @@ jobs:
   docker-builds:
     strategy:
       matrix:
-        app:
+        name:
+          - account
+          - app-n-lambda
+          - artifacts-harbor
+          - byoc-operator
+          - clusters
+          - csi-drivers
+          - distribution
+          - helm-charts
+          - msvc-elasticsearch
+          - msvc-influx
+          - msvc-mongo
+          - msvc-mysql
+          - msvc-n-mres
+          - msvc-neo4j
+          - msvc-redis
+          - msvc-redpanda
+          - msvc-zookeeper
+          - nodepool
+          - project
+          - resource-watcher
+          - routers
+          - wireguard
+        include:
           - name: account
             buildDir: operators/account
           - name: app-n-lambda

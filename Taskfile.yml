@@ -26,6 +26,7 @@ tasks:
   build:
     env:
       CGO_ENABLED: 0
+      GOOS: linux
     vars:
       BuiltAt:
         sh: date | sed 's/\s/_/g'
