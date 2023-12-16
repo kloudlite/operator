@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+
 	mongodbMsvcv1 "github.com/kloudlite/operator/apis/mongodb.msvc/v1"
 	"github.com/kloudlite/operator/operators/msvc-mongo/internal/env"
 	"github.com/kloudlite/operator/operators/msvc-mongo/internal/templates"
@@ -62,10 +63,6 @@ const (
 	Hosts        string = "HOSTS"
 	URI          string = "URI"
 )
-
-func getHelmSecretName(name string) string {
-	return "helm-" + name
-}
 
 // +kubebuilder:rbac:groups=mongodb.msvc.kloudlite.io,resources=services,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=mongodb.msvc.kloudlite.io,resources=services/status,verbs=get;update;patch
@@ -164,7 +161,7 @@ func (r *Reconciler) patchDefaults(req *rApi.Request[*mongodbMsvcv1.StandaloneSe
 
 	check.Status = true
 	if check != obj.Status.Checks[CheckPatchDefaults] {
-		obj.Status.Checks[CheckPatchDefaults] = check
+		fn.MapSet(obj.Status.Checks, CheckPatchDefaults, check)
 		if sr := req.UpdateStatus(); !sr.ShouldProceed() {
 			return sr
 		}
@@ -181,7 +178,6 @@ func (r *Reconciler) reconCredentials(req *rApi.Request[*mongodbMsvcv1.Standalon
 	defer req.LogPostCheck(ReconcileCredentials)
 
 	rootPassword := fn.CleanerNanoid(40)
-	replicasetKey := fn.CleanerNanoid(10) // should not be more than 10, as it crashes our mongodb process
 
 	msvcOutput := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: obj.Spec.Output.Credentials.Name, Namespace: obj.Namespace}}
 	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, msvcOutput, func() error {
@@ -191,30 +187,25 @@ func (r *Reconciler) reconCredentials(req *rApi.Request[*mongodbMsvcv1.Standalon
 		msvcOutput.SetOwnerReferences([]metav1.OwnerReference{fn.AsOwner(obj, true)})
 
 		if msvcOutput.Data == nil {
-
 			host := fmt.Sprintf("%s-%d.%s-headless.%s.svc.%s:27017", obj.Name, 0, obj.Name, obj.Namespace, r.Env.ClusterInternalDNS)
 
 			rootUsername := "root"
-			replicaSetName := "rs"
 
 			authSource := "admin"
 
-			output := types.ClusterSvcOutput{
+			output := types.StandaloneSvcOutput{
 				RootUsername: rootUsername,
 				RootPassword: rootPassword,
 				Hosts:        host,
 				URI: fmt.Sprintf(
-					"mongodb://%s:%s@%s/%s?authSource=%s&replicaSet=%s",
+					"mongodb://%s:%s@%s/%s?authSource=%s",
 					rootUsername,
 					rootPassword,
 					host,
 					"admin",
 					authSource,
-					replicaSetName,
 				),
-				AuthSource:      authSource,
-				ReplicasSetName: replicaSetName,
-				ReplicaSetKey:   replicasetKey,
+				AuthSource: authSource,
 			}
 
 			var err error
@@ -238,8 +229,7 @@ func (r *Reconciler) reconCredentials(req *rApi.Request[*mongodbMsvcv1.Standalon
 
 		if helmSecret.Data == nil {
 			helmSecret.StringData = map[string]string{
-				"mongodb-root-password":   rootPassword,
-				"mongodb-replica-set-key": replicasetKey,
+				"mongodb-root-password": rootPassword,
 			}
 		}
 
@@ -288,9 +278,7 @@ func (r *Reconciler) reconHelm(req *rApi.Request[*mongodbMsvcv1.StandaloneServic
 		"limits-cpu": obj.Spec.Resources.Cpu.Min,
 		"limits-mem": obj.Spec.Resources.Memory,
 
-		"existing-secret": getHelmSecretName(obj.Name),
-
-		"freeze": false,
+		"existing-secret": obj.Spec.Output.HelmSecret.Name,
 	})
 	if err != nil {
 		return req.CheckFailed(HelmReady, check, err.Error()).Err(nil)
@@ -331,6 +319,10 @@ func (r *Reconciler) reconSts(req *rApi.Request[*mongodbMsvcv1.StandaloneService
 		},
 	); err != nil {
 		return req.CheckFailed(StsReady, check, err.Error()).Err(nil)
+	}
+
+	if len(stsList.Items) == 0 {
+		return req.CheckFailed(StsReady, check, "no statefulset pods found, waiting for helm controller to reconcile the resource").Err(nil)
 	}
 
 	for i := range stsList.Items {
@@ -403,7 +395,7 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager, logger logging.Logger) e
 		builder.Watches(
 			obj,
 			handler.EnqueueRequestsFromMapFunc(
-				func(ctx context.Context, obj client.Object) []reconcile.Request {
+				func(_ context.Context, obj client.Object) []reconcile.Request {
 					value, ok := obj.GetLabels()[constants.MsvcNameKey]
 					if !ok {
 						return nil

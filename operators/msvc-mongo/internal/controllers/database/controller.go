@@ -163,20 +163,14 @@ func (r *Reconciler) finalize(req *rApi.Request[*mongodbMsvcv1.Database]) stepRe
 
 	check := rApi.Check{Generation: obj.Generation}
 
-	msvcSecret, err := rApi.Get(ctx, r.Client, fn.NN(obj.Namespace, "msvc-"+obj.Spec.MsvcRef.Name), &corev1.Secret{})
-	if err != nil {
-		req.Logger.Infof("msvc secret does not exist, means msvc does not exist, then why keep managed resource, finalizing ...")
-		return req.Finalize()
-	}
-
-	msvcOutput, err := fn.ParseFromSecret[types.MsvcOutput](msvcSecret)
+	_, URI, err := r.getMsvcConnectionParams(ctx, obj)
 	if err != nil {
 		return req.CheckFailed(DBUserDeleted, check, err.Error()).Err(nil)
 	}
 
 	mctx, cancel := r.newMongoContext(ctx)
 	defer cancel()
-	mongoCli, err := libMongo.NewClient(mctx, msvcOutput.URI)
+	mongoCli, err := libMongo.NewClient(mctx, URI)
 	if err != nil {
 		return req.CheckFailed(DBUserDeleted, check, err.Error())
 	}
@@ -241,7 +235,7 @@ func (r *Reconciler) getMsvcConnectionParams(ctx context.Context, obj *mongodbMs
 				return "", "", err
 			}
 
-			cso, err := fn.ParseFromSecret[types.ClusterSvcOutput](s)
+			cso, err := fn.ParseFromSecret[types.StandaloneSvcOutput](s)
 			if err != nil {
 				return "", "", err
 			}
@@ -331,7 +325,7 @@ func (r *Reconciler) reconDBCreds(req *rApi.Request[*mongodbMsvcv1.Database]) st
 		b2, err := templates.Parse(
 			templates.Secret, map[string]any{
 				"name":        secretName,
-				"namespace":   obj.Namespace,
+				"namespace":   secretNamespace,
 				"owner-refs":  obj.GetOwnerReferences(),
 				"string-data": mresOutput,
 			},
@@ -411,13 +405,12 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager, logger logging.Logger) e
 					}
 
 					var dbList mongodbMsvcv1.DatabaseList
-					if err := r.List(
-						context.TODO(), &dbList, &client.ListOptions{
-							LabelSelector: labels.SelectorFromValidatedSet(
-								map[string]string{constants.MsvcNameKey: msvcName},
-							),
-							Namespace: obj.GetNamespace(),
-						},
+					if err := r.List(ctx, &dbList, &client.ListOptions{
+						LabelSelector: labels.SelectorFromValidatedSet(
+							map[string]string{constants.MsvcNameKey: msvcName},
+						),
+						Namespace: obj.GetNamespace(),
+					},
 					); err != nil {
 						return nil
 					}
