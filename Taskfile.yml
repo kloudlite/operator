@@ -38,7 +38,7 @@ tasks:
     dir: "{{.CWD}}"
     cmds:
       - go build -ldflags="-s -w -X github.com/kloudlite/operator/common.BuiltAt=\"{{.BuiltAt}}\"" -o {{.Out}}
-#      - upx {{.Out}}
+      - upx {{.Out}}
 
   setup:
     dir: ./bin
