@@ -26,11 +26,8 @@ jobs:
       matrix:
         name:
           - account
-          - app-n-lambda
-          - artifacts-harbor
-          - byoc-operator
+          - app
           - clusters
-          - csi-drivers
           - distribution
           - helm-charts
           - msvc-elasticsearch
@@ -50,16 +47,10 @@ jobs:
         include:
           - name: account
             buildDir: operators/account
-          - name: app-n-lambda
+          - name: app
             buildDir: operators/app-n-lambda
-          - name: artifacts-harbor
-            buildDir: operators/artifacts-harbor
-          - name: byoc-operator
-            buildDir: operators/byoc-operator
           - name: clusters
             buildDir: operators/clusters
-          - name: csi-drivers
-            buildDir: operators/csi-drivers
           - name: distribution
             buildDir: operators/distribution
           - name: helm-charts
