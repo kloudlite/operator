@@ -24,19 +24,39 @@ jobs:
   docker-builds:
     strategy:
       matrix:
-        app:
+        name:
+          - platform
+          - agent
+          - account
+          - app
+          - clusters
+          - distribution
+          - helm-charts
+          - msvc-elasticsearch
+          - msvc-influx
+          - msvc-mongo
+          - msvc-mysql
+          - msvc-n-mres
+          - msvc-neo4j
+          - msvc-redis
+          - msvc-redpanda
+          - msvc-zookeeper
+          - nodepool
+          - project
+          - resource-watcher
+          - routers
+          - wireguard
+        include:
+          - name: platform
+            buildDir: cmd/agent-operator
+          - name: agent
+            buildDir: cmd/platform-operator
           - name: account
             buildDir: operators/account
-          - name: app-n-lambda
+          - name: app
             buildDir: operators/app-n-lambda
-          - name: artifacts-harbor
-            buildDir: operators/artifacts-harbor
-          - name: byoc-operator
-            buildDir: operators/byoc-operator
           - name: clusters
             buildDir: operators/clusters
-          - name: csi-drivers
-            buildDir: operators/csi-drivers
           - name: distribution
             buildDir: operators/distribution
           - name: helm-charts
@@ -126,5 +146,7 @@ jobs:
           version_string="v${branch_name#release-}-nightly"
           
           cd .github/workflows/container-build
+
+          upx ./app
           task go-container-build Image="ghcr.io/kloudlite/operator/${{matrix.name}}:$version_string"
           task go-container-build Image="ghcr.io/kloudlite/operator/${{matrix.name}}:commit-${GITHUB_SHA}"
