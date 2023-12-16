@@ -51,13 +51,6 @@ func (r *Reconciler) GetName() string {
 func (r *Reconciler) SendResourceEvents(ctx context.Context, obj *unstructured.Unstructured, logger logging.Logger) (ctrl.Result, error) {
 	obj.SetManagedFields(nil)
 
-	if r.MsgSender == nil {
-		fmt.Printf("message-sender: %+v\n", r.MsgSender)
-		return ctrl.Result{
-			// RequeueAfter: 2 *time.Second,
-		}, errors.New("waiting for message sender to be initialized")
-	}
-
 	// mctx, cf := context.WithTimeout(ctx, 100*time.Second)
 	_ = time.Second
 	mctx, cf := context.WithCancel(ctx)
@@ -168,6 +161,13 @@ func (r *Reconciler) SendResourceEvents(ctx context.Context, obj *unstructured.U
 // +kubebuilder:rbac:groups=watcher.kloudlite.io,resources=statuswatchers/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=watcher.kloudlite.io,resources=statuswatchers/finalizers,verbs=update
 func (r *Reconciler) Reconcile(ctx context.Context, oReq ctrl.Request) (ctrl.Result, error) {
+	if r.MsgSender == nil {
+		r.logger.Infof("message-sender is nil")
+		return ctrl.Result{
+			// RequeueAfter: 2 *time.Second,
+		}, errors.New("waiting for message sender to be initialized")
+	}
+
 	var wName types.WrappedName
 	if err := json.Unmarshal([]byte(oReq.Name), &wName); err != nil {
 		return ctrl.Result{}, nil

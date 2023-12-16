@@ -76,7 +76,7 @@ func RegisterInto(mgr operator.Operator, runningOnTenant bool) {
 
 			cc, err := libGrpc.Connect(ev.GrpcAddr, libGrpc.ConnectOpts{
 				SecureConnect: runningOnTenant,
-				Timeout:       2 * time.Second,
+				Timeout:       100 * time.Second,
 			})
 			if err != nil {
 				logger.Infof("failed to connect to grpc addr: %s, will be retrying in %d seconds", ev.GrpcAddr, 2)

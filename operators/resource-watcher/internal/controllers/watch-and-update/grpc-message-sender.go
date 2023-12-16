@@ -14,7 +14,7 @@ import (
 )
 
 type grpcMsgSender struct {
-	errCh               chan error
+	// errCh               chan error
 	resourceMessagesCli messages.MessageDispatchService_ReceiveResourceUpdatesClient
 	infraMessagesCli    messages.MessageDispatchService_ReceiveInfraUpdatesClient
 	logger              logging.Logger
@@ -28,7 +28,7 @@ func (g *grpcMsgSender) DispatchInfraUpdates(ctx context.Context, ru t.ResourceU
 	}
 
 	if err = g.infraMessagesCli.Send(&messages.InfraUpdate{Message: b}); err != nil {
-		g.errCh <- err
+		// g.errCh <- err
 		return err
 	}
 
@@ -44,7 +44,7 @@ func (g *grpcMsgSender) DispatchResourceUpdates(ctx context.Context, ru t.Resour
 	}
 
 	if err = g.resourceMessagesCli.Send(&messages.ResourceUpdate{Message: b}); err != nil {
-		g.errCh <- err
+		// g.errCh <- err
 		return err
 	}
 

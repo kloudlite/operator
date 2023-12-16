@@ -26,14 +26,16 @@ func Connect(url string, opts ConnectOpts) (*grpc.ClientConn, error) {
 	if opts.SecureConnect {
 		conn, err := grpc.DialContext(ctx, url, grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{
 			InsecureSkipVerify: false,
-		})), grpc.WithBlock())
+			// })), grpc.WithBlock())
+		})))
 		if err == nil {
 			return conn, nil
 		}
 		log.Printf("Failed to connect: %v, please retry", err)
 		return nil, err
 	}
-	conn, err := grpc.DialContext(ctx, url, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
+	// conn, err := grpc.DialContext(ctx, url, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
+	conn, err := grpc.DialContext(ctx, url, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err == nil {
 		return conn, nil
 	}
