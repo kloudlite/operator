@@ -4,11 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
-
 	mongodbMsvcv1 "github.com/kloudlite/operator/apis/mongodb.msvc/v1"
 	"github.com/kloudlite/operator/operators/msvc-mongo/internal/env"
 	"github.com/kloudlite/operator/operators/msvc-mongo/internal/templates"
+	"github.com/kloudlite/operator/operators/msvc-mongo/internal/types"
 	"github.com/kloudlite/operator/pkg/constants"
 	fn "github.com/kloudlite/operator/pkg/functions"
 	"github.com/kloudlite/operator/pkg/kubectl"
@@ -45,10 +44,12 @@ func (r *Reconciler) GetName() string {
 }
 
 const (
-	HelmReady        string = "helm-ready"
-	StsReady         string = "sts-ready"
-	AccessCredsReady string = "access-creds-ready"
-	HelmSecretReady  string = "helm-secret-ready"
+	HelmReady            string = "helm-ready"
+	StsReady             string = "sts-ready"
+	AccessCredsReady     string = "access-creds-ready"
+	HelmSecretReady      string = "helm-secret-ready"
+	ReconcileCredentials string = "reconcile-credentials"
+	CheckPatchDefaults   string = "patch-defaults"
 )
 
 const (
@@ -98,7 +99,11 @@ func (r *Reconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.
 		return step.ReconcilerResponse()
 	}
 
-	if step := r.reconAccessCreds(req); !step.ShouldProceed() {
+	if step := r.patchDefaults(req); !step.ShouldProceed() {
+		return step.ReconcilerResponse()
+	}
+
+	if step := r.reconCredentials(req); !step.ShouldProceed() {
 		return step.ReconcilerResponse()
 	}
 
@@ -122,61 +127,133 @@ func (r *Reconciler) finalize(req *rApi.Request[*mongodbMsvcv1.StandaloneService
 	return req.Finalize()
 }
 
-func (r *Reconciler) reconAccessCreds(req *rApi.Request[*mongodbMsvcv1.StandaloneService]) stepResult.Result {
-	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
+func (r *Reconciler) patchDefaults(req *rApi.Request[*mongodbMsvcv1.StandaloneService]) stepResult.Result {
+	ctx, obj := req.Context(), req.Object
 	check := rApi.Check{Generation: obj.Generation}
 
-	req.LogPreCheck(AccessCredsReady)
-	defer req.LogPostCheck(AccessCredsReady)
+	req.LogPreCheck(CheckPatchDefaults)
+	defer req.LogPostCheck(CheckPatchDefaults)
 
-	secretName := "msvc-" + obj.Name
-	scrt := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: secretName, Namespace: obj.Namespace}}
-	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, scrt, func() error {
-		scrt.SetOwnerReferences([]metav1.OwnerReference{fn.AsOwner(obj, true)})
-		scrt.SetFinalizers(obj.GetFinalizers())
+	hasPatched := false
 
-		scrt.Labels = obj.GetLabels()
+	if obj.Spec.Output.Credentials.Name == "" {
+		hasPatched = true
+		obj.Spec.Output.Credentials.Name = fmt.Sprintf("msvc-%s-creds", obj.Name)
+	}
 
-		if scrt.Data == nil {
-			scrt.Data = map[string][]byte{
-				"ROOT_PASSWORD": []byte(fn.CleanerNanoid(40)),
-				"HOSTS": func() []byte {
-					var hosts []string
-					for i := 0; i < obj.Spec.ReplicaCount; i++ {
-						hosts = append(hosts, fmt.Sprintf("%s-%d.%s.%s.svc.cluster.local:27017", obj.Name, i, obj.Name, obj.Namespace))
-					}
-					return []byte(strings.Join(hosts, ","))
-				}(),
-				"URI": []byte(fmt.Sprintf("mongodb://%s:%s@%s/admin?authSource=admin", "root", scrt.Data[RootPassword], scrt.Data[Hosts])),
+	if obj.Spec.Output.Credentials.Namespace == "" {
+		hasPatched = true
+		obj.Spec.Output.Credentials.Namespace = obj.Namespace
+	}
+
+	if obj.Spec.Output.HelmSecret.Name == "" {
+		hasPatched = true
+		obj.Spec.Output.HelmSecret.Name = fmt.Sprintf("helm-%s-creds", obj.Name)
+	}
+
+	if obj.Spec.Output.HelmSecret.Namespace == "" {
+		hasPatched = true
+		obj.Spec.Output.HelmSecret.Namespace = obj.Namespace
+	}
+
+	if hasPatched {
+		if err := r.Update(ctx, obj); err != nil {
+			return req.CheckFailed(CheckPatchDefaults, check, err.Error())
+		}
+	}
+
+	check.Status = true
+	if check != obj.Status.Checks[CheckPatchDefaults] {
+		obj.Status.Checks[CheckPatchDefaults] = check
+		if sr := req.UpdateStatus(); !sr.ShouldProceed() {
+			return sr
+		}
+	}
+
+	return req.Next()
+}
+
+func (r *Reconciler) reconCredentials(req *rApi.Request[*mongodbMsvcv1.StandaloneService]) stepResult.Result {
+	ctx, obj := req.Context(), req.Object
+	check := rApi.Check{Generation: obj.Generation}
+
+	req.LogPreCheck(ReconcileCredentials)
+	defer req.LogPostCheck(ReconcileCredentials)
+
+	rootPassword := fn.CleanerNanoid(40)
+	replicasetKey := fn.CleanerNanoid(10) // should not be more than 10, as it crashes our mongodb process
+
+	msvcOutput := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: obj.Spec.Output.Credentials.Name, Namespace: obj.Namespace}}
+	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, msvcOutput, func() error {
+		msvcOutput.SetLabels(obj.GetLabels())
+		msvcOutput.SetFinalizers([]string{constants.GenericFinalizer})
+
+		msvcOutput.SetOwnerReferences([]metav1.OwnerReference{fn.AsOwner(obj, true)})
+
+		if msvcOutput.Data == nil {
+
+			host := fmt.Sprintf("%s-%d.%s-headless.%s.svc.%s:27017", obj.Name, 0, obj.Name, obj.Namespace, r.Env.ClusterInternalDNS)
+
+			rootUsername := "root"
+			replicaSetName := "rs"
+
+			authSource := "admin"
+
+			output := types.ClusterSvcOutput{
+				RootUsername: rootUsername,
+				RootPassword: rootPassword,
+				Hosts:        host,
+				URI: fmt.Sprintf(
+					"mongodb://%s:%s@%s/%s?authSource=%s&replicaSet=%s",
+					rootUsername,
+					rootPassword,
+					host,
+					"admin",
+					authSource,
+					replicaSetName,
+				),
+				AuthSource:      authSource,
+				ReplicasSetName: replicaSetName,
+				ReplicaSetKey:   replicasetKey,
+			}
+
+			var err error
+			msvcOutput.StringData, err = output.ToMap()
+			return err
+		}
+		return nil
+	}); err != nil {
+		return req.CheckFailed(ReconcileCredentials, check, err.Error())
+	}
+
+	req.AddToOwnedResources(rApi.ParseResourceRef(msvcOutput))
+
+	helmSecret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: obj.Spec.Output.HelmSecret.Name, Namespace: obj.Namespace}}
+
+	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, helmSecret, func() error {
+		helmSecret.SetLabels(obj.GetLabels())
+		helmSecret.SetFinalizers([]string{constants.GenericFinalizer})
+
+		helmSecret.SetOwnerReferences([]metav1.OwnerReference{fn.AsOwner(obj, true)})
+
+		if helmSecret.Data == nil {
+			helmSecret.StringData = map[string]string{
+				"mongodb-root-password":   rootPassword,
+				"mongodb-replica-set-key": replicasetKey,
 			}
 		}
 
 		return nil
 	}); err != nil {
-		return req.CheckFailed(AccessCredsReady, check, err.Error()).Err(nil)
+		return req.CheckFailed(ReconcileCredentials, check, err.Error())
 	}
 
-	req.AddToOwnedResources(rApi.ParseResourceRef(scrt))
-
-	// creating helm secrets
-	helmAdminSecret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: getHelmSecretName(obj.Name), Namespace: obj.Namespace}}
-	controllerutil.CreateOrUpdate(ctx, r.Client, helmAdminSecret, func() error {
-		helmAdminSecret.SetOwnerReferences([]metav1.OwnerReference{fn.AsOwner(obj, true)})
-
-		if helmAdminSecret.Data == nil {
-			helmAdminSecret.Data = map[string][]byte{
-				"mongodb-passwords":        []byte(""),
-				"mongodb-root-password":    scrt.Data[RootPassword],
-				"mongodb-metrics-password": []byte(""),
-				"mongodb-replica-set-key":  []byte(""),
-			}
-		}
-		return nil
-	})
+	req.AddToOwnedResources(rApi.ParseResourceRef(helmSecret))
+	rApi.SetLocal(req, "creds", msvcOutput.Data)
 
 	check.Status = true
-	if check != checks[AccessCredsReady] {
-		checks[AccessCredsReady] = check
+	if check != obj.Status.Checks[ReconcileCredentials] {
+		obj.Status.Checks[ReconcileCredentials] = check
 		if sr := req.UpdateStatus(); !sr.ShouldProceed() {
 			return sr
 		}

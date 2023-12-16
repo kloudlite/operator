@@ -231,11 +231,22 @@ func (r *Reconciler) getMsvcConnectionParams(ctx context.Context, obj *mongodbMs
 	switch obj.Spec.MsvcRef.Kind {
 	case "StandaloneService":
 		{
-			_, err := rApi.Get(ctx, r.Client, fn.NN(obj.GetNamespace(), obj.Spec.MsvcRef.Name), &mongodbMsvcv1.StandaloneService{})
+			msvc, err := rApi.Get(ctx, r.Client, fn.NN(obj.GetNamespace(), obj.Spec.MsvcRef.Name), &mongodbMsvcv1.StandaloneService{})
 			if err != nil {
 				return "", "", err
 			}
-			return "", "", err
+
+			s, err := rApi.Get(ctx, r.Client, fn.NN(msvc.Spec.Output.Credentials.Namespace, msvc.Spec.Output.Credentials.Name), &corev1.Secret{})
+			if err != nil {
+				return "", "", err
+			}
+
+			cso, err := fn.ParseFromSecret[types.ClusterSvcOutput](s)
+			if err != nil {
+				return "", "", err
+			}
+
+			return cso.Hosts, cso.URI, err
 		}
 	case "ClusterService":
 		{

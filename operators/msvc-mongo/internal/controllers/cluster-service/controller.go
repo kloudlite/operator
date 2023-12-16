@@ -274,7 +274,7 @@ func (r *Reconciler) reconHelm(req *rApi.Request[*mongodbMsvcv1.ClusterService])
 		},
 		"owner-refs": []metav1.OwnerReference{fn.AsOwner(obj, true)},
 
-		"storage-class": "sc-xfs",
+		"storage-class": obj.Spec.Resources.Storage.StorageClass,
 		"storage-size":  obj.Spec.Resources.Storage.Size,
 
 		"replica-count":        obj.Spec.Replicas,
