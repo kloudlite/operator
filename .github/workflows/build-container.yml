@@ -25,6 +25,8 @@ jobs:
     strategy:
       matrix:
         name:
+          - platform
+          - agent
           - account
           - app
           - clusters
@@ -45,6 +47,10 @@ jobs:
           - routers
           - wireguard
         include:
+          - name: platform
+            buildDir: cmd/agent-operator
+          - name: agent
+            buildDir: cmd/platform-operator
           - name: account
             buildDir: operators/account
           - name: app
