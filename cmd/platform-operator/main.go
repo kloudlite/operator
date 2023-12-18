@@ -7,6 +7,7 @@ import (
 	helmCharts "github.com/kloudlite/operator/operators/helm-charts/controller"
 	msvcMongo "github.com/kloudlite/operator/operators/msvc-mongo/controller"
 	project "github.com/kloudlite/operator/operators/project/controller"
+	routers "github.com/kloudlite/operator/operators/routers/controller"
 	// routers "github.com/kloudlite/operator/operators/routers/controller"
 )
 
@@ -15,9 +16,9 @@ func main() {
 
 	// kloudlite resources
 	app.RegisterInto(mgr)
+	routers.RegisterInto(mgr)
 	project.RegisterInto(mgr)
 	helmCharts.RegisterInto(mgr)
-	// routers.RegisterInto(mgr)
 
 	// kloudlite managed services
 	msvcMongo.RegisterInto(mgr)

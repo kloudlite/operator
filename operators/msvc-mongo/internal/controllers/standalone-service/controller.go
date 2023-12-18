@@ -243,7 +243,7 @@ func (r *Reconciler) reconCredentials(req *rApi.Request[*mongodbMsvcv1.Standalon
 
 	check.Status = true
 	if check != obj.Status.Checks[ReconcileCredentials] {
-		obj.Status.Checks[ReconcileCredentials] = check
+		fn.MapSet(obj.Status.Checks, ReconcileCredentials, check)
 		if sr := req.UpdateStatus(); !sr.ShouldProceed() {
 			return sr
 		}
