@@ -156,6 +156,9 @@ func (r *Reconciler) ensureNs(req *rApi.Request[*wgv1.Device]) stepResult.Result
 		return req.CheckFailed(NSReady, check, err.Error())
 	}
 
+	req.LogPreCheck(NSReady)
+	defer req.LogPostCheck(NSReady)
+
 	_, err := rApi.Get(ctx, r.Client, fn.NN("", r.Env.DeviceInfoNamespace), &corev1.Namespace{})
 	if err != nil {
 		if !apiErrors.IsNotFound(err) {
@@ -190,6 +193,9 @@ func (r *Reconciler) ensureDnsConfig(req *rApi.Request[*wgv1.Device]) stepResult
 	failed := func(err error) stepResult.Result {
 		return req.CheckFailed(DnsConfigReady, check, err.Error())
 	}
+
+	req.LogPreCheck(DnsConfigReady)
+	defer req.LogPostCheck(DnsConfigReady)
 
 	kubeDns, err := rApi.Get(ctx, r.Client, fn.NN("kube-system", "kube-dns"), &corev1.Service{})
 	if err != nil {
@@ -310,6 +316,9 @@ func (r *Reconciler) ensureSecretKeys(req *rApi.Request[*wgv1.Device]) stepResul
 	failed := func(err error) stepResult.Result {
 		return req.CheckFailed(KeysAndSecretReady, check, err.Error())
 	}
+
+	req.LogPreCheck(KeysAndSecretReady)
+	defer req.LogPostCheck(KeysAndSecretReady)
 
 	name := fmt.Sprint(DEVICE_KEY_PREFIX, obj.Name)
 
@@ -487,6 +496,9 @@ func (r *Reconciler) ensureSvcCreated(req *rApi.Request[*wgv1.Device]) stepResul
 		return req.CheckFailed(ServerSvcReady, check, err.Error())
 	}
 
+	req.LogPreCheck(ServerSvcReady)
+	defer req.LogPostCheck(ServerSvcReady)
+
 	if err := func() error {
 		if _, err := rApi.Get(ctx, r.Client, fn.NN(r.Env.DeviceInfoNamespace, fmt.Sprint(WG_SERVER_NAME_PREFIX, obj.Name)), &corev1.Service{}); err != nil {
 			if !apiErrors.IsNotFound(err) {
@@ -527,6 +539,9 @@ func (r *Reconciler) ensureConfig(req *rApi.Request[*wgv1.Device]) stepResult.Re
 		return req.CheckFailed(ConfigReady, check, err.Error())
 	}
 
+	req.LogPreCheck(ConfigReady)
+	defer req.LogPostCheck(ConfigReady)
+
 	devConfig, serverConfig, err := r.generateDeviceConfig(req)
 	if err != nil {
 		return failed(err)
@@ -562,6 +577,9 @@ func (r *Reconciler) ensureConfig(req *rApi.Request[*wgv1.Device]) stepResult.Re
 func (r *Reconciler) ensureServiceSync(req *rApi.Request[*wgv1.Device]) stepResult.Result {
 	ctx, obj, checks := req.Context(), req.Object, req.Object.Status.Checks
 	check := rApi.Check{Generation: obj.Generation}
+
+	req.LogPreCheck(ServicesSynced)
+	defer req.LogPostCheck(ServicesSynced)
 
 	failed := func(err error) stepResult.Result {
 		return req.CheckFailed(ServicesSynced, check, err.Error())
@@ -738,6 +756,9 @@ func (r *Reconciler) ensureDeploy(req *rApi.Request[*wgv1.Device]) stepResult.Re
 	failed := func(err error) stepResult.Result {
 		return req.CheckFailed(ServerReady, check, err.Error())
 	}
+
+	req.LogPreCheck(ServerReady)
+	defer req.LogPostCheck(ServerReady)
 
 	// check deployment
 	if err := func() error {
