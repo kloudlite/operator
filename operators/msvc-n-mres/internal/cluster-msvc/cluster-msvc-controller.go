@@ -130,6 +130,9 @@ func (r *Reconciler) ensureNamespace(req *rApi.Request[*crdsv1.ClusterManagedSer
 			},
 			ObjectMeta: metav1.ObjectMeta{
 				Name: obj.Spec.Namespace,
+				OwnerReferences: []metav1.OwnerReference{
+					fn.AsOwner(obj, true),
+				},
 			},
 		}); err != nil {
 			return failed(err)
