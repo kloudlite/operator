@@ -3,7 +3,6 @@ package device
 import (
 	"context"
 	"fmt"
-	"sort"
 	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -70,10 +69,6 @@ func (r *Reconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.
 	req, err := rApi.NewRequest(rApi.NewReconcilerCtx(ctx, r.logger), r.Client, request.NamespacedName, &wgv1.Device{})
 	if err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
-	}
-
-	if r.Env.DeviceInfoNamespace == "" {
-		r.Env.DeviceInfoNamespace = "device-info"
 	}
 
 	if req.Object.GetDeletionTimestamp() != nil {
@@ -203,31 +198,23 @@ func (r *Reconciler) ensureDnsConfig(req *rApi.Request[*wgv1.Device]) stepResult
 
 	dnsConfigName := fmt.Sprint(DNS_NAME_PREFIX, obj.Name)
 
-	getDnsConfig := func(devices []wgv1.Device) ([]byte, *string, error) {
-		sort.Slice(devices, func(i, j int) bool {
-			return devices[i].Name < devices[j].Name
-		})
+	getDnsConfig := func() ([]byte, *string, error) {
 
 		rewriteRules := ""
-		for _, dev := range devices {
-			if dev.Name == "" {
-				continue
-			}
 
-			rewriteRules += fmt.Sprintf(
-				"\n    rewrite name %s.%s %s.%s.svc.%s",
-				dev.Name,
-				"kl.local",
-				dev.Name,
-				r.Env.DeviceInfoNamespace,
-				func() string {
-					if r.Env.ClusterInternalDns == "" {
-						return "cluster.local"
-					}
-					return r.Env.ClusterInternalDns
-				}(),
-			)
+		for _, cn := range obj.Spec.CNameRecords {
+			rewriteRules += fmt.Sprintf("\n\trewrite name %s %s", cn.Host, cn.Target)
 		}
+
+		rewriteRules += fmt.Sprintf("\n\trewrite name regex ^([a-zA-Z0-9-]+)\\.local$ {1}.%s.svc.%s answer auto",
+			r.Env.DeviceInfoNamespace,
+			func() string {
+				if r.Env.ClusterInternalDns == "" {
+					return "cluster.local"
+				}
+				return r.Env.ClusterInternalDns
+			}(),
+		)
 
 		if obj.Spec.DeviceNamespace != nil {
 			rewriteRules += fmt.Sprintf("\n\trewrite name regex ^([a-zA-Z0-9-]+)\\.?[^.]*$ {1}.%s.svc.%s answer auto",
@@ -285,14 +272,7 @@ func (r *Reconciler) ensureDnsConfig(req *rApi.Request[*wgv1.Device]) stepResult
 
 	if err := func() error {
 
-		var devices wgv1.DeviceList
-		if err := r.List(ctx, &devices, &client.ListOptions{
-			Namespace: r.Env.DeviceInfoNamespace,
-		}); err != nil {
-			return err
-		}
-
-		b, conf, err := getDnsConfig(devices.Items)
+		b, conf, err := getDnsConfig()
 		if err != nil {
 			return err
 		}
