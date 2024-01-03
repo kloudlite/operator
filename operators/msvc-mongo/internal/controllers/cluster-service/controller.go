@@ -74,8 +74,8 @@ func (r *Reconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.
 		return ctrl.Result{}, nil
 	}
 
-	req.LogPreReconcile()
-	defer req.LogPostReconcile()
+	req.PreReconcile()
+	defer req.PostReconcile()
 
 	if step := req.ClearStatusIfAnnotated(); !step.ShouldProceed() {
 		return step.ReconcilerResponse()
@@ -284,8 +284,8 @@ func (r *Reconciler) reconHelm(req *rApi.Request[*mongodbMsvcv1.ClusterService])
 		"cpu-min": obj.Spec.Resources.Cpu.Min,
 		"cpu-max": obj.Spec.Resources.Cpu.Max,
 
-		"memory-min": obj.Spec.Resources.Memory,
-		"memory-max": obj.Spec.Resources.Memory,
+		"memory-min": obj.Spec.Resources.Memory.Min,
+		"memory-max": obj.Spec.Resources.Memory.Max,
 	})
 	if err != nil {
 		return req.CheckFailed(HelmReady, check, err.Error())
