@@ -129,7 +129,7 @@ func (r *Reconciler) dispatchEvent(ctx context.Context, obj *unstructured.Unstru
 			}
 		}
 
-	case obj.GetObjectKind().GroupVersionKind().String() == fn.ParseGVK("crds.kloudlite.io/v1", "ClusterManagedService").String():
+	case obj.GetObjectKind().GroupVersionKind().String() == fn.ParseGVK("crds.kloudlite.io/v1", "ProjectManagedService").String():
 		{
 			if err := r.MsgSender.DispatchInfraResourceUpdates(mctx, t.ResourceUpdate{
 				ClusterName: r.Env.ClusterName,
@@ -279,7 +279,7 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager, logger logging.Logger) e
 		NewWatchResource("clusters.kloudlite.io/v1", "NodePool"),
 		NewWatchResource("wireguard.kloudlite.io/v1", "Device"),
 		NewWatchResource("distribution.kloudlite.io/v1", "BuildRun"),
-		NewWatchResource("crds.kloudlite.io/v1", "ClusterManagedService"),
+		NewWatchResource("crds.kloudlite.io/v1", "ProjectManagedService"),
 
 		// native resources
 		NewWatchResource("v1", "PersistentVolumeClaim"),
