@@ -42,10 +42,14 @@ func (p *Project) GetStatus() *rApi.Status {
 }
 
 func (p *Project) GetEnsuredLabels() map[string]string {
-	return map[string]string{
+	labels := map[string]string{
 		constants.ProjectNameKey:     p.Name,
 		constants.TargetNamespaceKey: p.Spec.TargetNamespace,
 	}
+	if p.Spec.ClusterName != nil {
+		labels[constants.ClusterNameKey] = *p.Spec.ClusterName
+	}
+	return labels
 }
 
 func (p *Project) GetEnsuredAnnotations() map[string]string {
