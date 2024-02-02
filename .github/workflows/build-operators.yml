@@ -143,6 +143,7 @@ jobs:
       - name: Build & Push Image
         if: startsWith(github.ref, 'refs/heads/release')
         run: |
+          set +e
           IMAGE_TAG=$(echo ${GITHUB_REF#refs/heads/} | sed 's/release-//g')
 
           OVERRIDE_PUSHED_IMAGE=false
@@ -161,6 +162,8 @@ jobs:
             [ "$OVERRIDE_PUSHED_IMAGE" = "false" ] && echo "image ($image_name:$IMAGE_TAG) already exists, and override image is disable, exiting" && exit 0
             echo "image exists, but override pushed image is set to true. proceeding with building image"
           fi
+
+          set -e
 
           echo "proceeding to build image"
 
