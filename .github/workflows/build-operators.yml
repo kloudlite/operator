@@ -152,7 +152,7 @@ jobs:
             OVERRIDE_PUSHED_IMAGE=true
           fi
 
-          image_name="ghcr.io/kloudlite/operator/${{matrix.app}}"
+          image_name="ghcr.io/kloudlite/operator/${{matrix.name}}"
 
           docker manifest inspect $image_name:$IMAGE_TAG
           if [ $? -eq 0 ]; then
@@ -163,5 +163,5 @@ jobs:
           cd .github/workflows/container-build
 
           upx ./app
-          task go-container-build Image="ghcr.io/kloudlite/operator/${{matrix.name}}:$version_string"
-          # task go-container-build Image="ghcr.io/kloudlite/operator/${{matrix.name}}:commit-${GITHUB_SHA}"
+          task go-container-build Image="$image_name:$IMAGE_TAG"
+          # task go-container-build Image="$image_name:commit-${GITHUB_SHA}"
