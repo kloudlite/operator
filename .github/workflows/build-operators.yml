@@ -154,7 +154,8 @@ jobs:
 
           image_name="ghcr.io/kloudlite/operator/${{matrix.name}}"
 
-          docker manifest inspect $image_name:$IMAGE_TAG
+          docker manifest inspect "$image_name:$IMAGE_TAG"
+          echo "HERE........."
           if [ $? -eq 0 ]; then
             [ "$OVERRIDE_PUSHED_IMAGE" = "false" ] && echo "image ($image_name:$IMAGE_TAG) already exists, and override image is disable, exiting" && exit 0
             echo "image exists, but override pushed image is set to true. proceeding with building image"
