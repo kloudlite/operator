@@ -160,9 +160,11 @@ jobs:
             echo "image exists, but override pushed image is set to true. proceeding with building image"
           fi
 
+          echo "proceeding to build image"
+
           cd .github/workflows/container-build
 
-          echo "proceeding to build image"
+          echo "inside directory"
           upx ./app
           task go-container-build Image="$image_name:$IMAGE_TAG"
           # task go-container-build Image="$image_name:commit-${GITHUB_SHA}"
