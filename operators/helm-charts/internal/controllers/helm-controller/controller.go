@@ -264,20 +264,6 @@ func (r *Reconciler) startInstallJob(req *rApi.Request[*crdsv1.HelmChart]) stepR
 		job = nil
 	}
 
-	pod, err := job_manager.GetLatestPod(ctx, r.Client, job.Namespace, job.Name)
-	if err != nil {
-		pod = nil
-	}
-
-	if pod != nil {
-		podContainerStatuses := pod.Status.ContainerStatuses
-		for i := range podContainerStatuses {
-			if (podContainerStatuses[i].State.Waiting.Reason == "ImagePullBackOff") || (podContainerStatuses[i].State.Waiting.Reason == "ErrImagePull") {
-				job = nil
-			}
-		}
-	}
-
 	values, err := valuesToYaml(obj.Spec.Values)
 	if err != nil {
 		return req.CheckFailed(installOrUpgradeJob, check, err.Error()).Err(nil)
@@ -339,6 +325,23 @@ func (r *Reconciler) startInstallJob(req *rApi.Request[*crdsv1.HelmChart]) stepR
 		}
 
 		return req.Done().RequeueAfter(1 * time.Second)
+	}
+
+	pod, err := job_manager.GetLatestPod(ctx, r.Client, job.Namespace, job.Name)
+	if err != nil {
+		return req.CheckFailed(installOrUpgradeJob, check, "pod not found").Err(nil)
+	}
+
+	if pod != nil {
+		podContainerStatuses := pod.Status.ContainerStatuses
+		for i := range podContainerStatuses {
+			if (podContainerStatuses[i].State.Waiting.Reason == "ImagePullBackOff") || (podContainerStatuses[i].State.Waiting.Reason == "ErrImagePull") {
+				if err := job_manager.DeleteJob(ctx, r.Client, job.Namespace, job.Name); err != nil {
+					return req.CheckFailed(installOrUpgradeJob, check, err.Error())
+				}
+				return req.Done()
+			}
+		}
 	}
 
 	if !job_manager.HasJobFinished(ctx, r.Client, job) {
