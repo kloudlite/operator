@@ -264,6 +264,20 @@ func (r *Reconciler) startInstallJob(req *rApi.Request[*crdsv1.HelmChart]) stepR
 		job = nil
 	}
 
+	pod, err := job_manager.GetLatestPod(ctx, r.Client, job.Namespace, job.Name)
+	if err != nil {
+		pod = nil
+	}
+
+	if pod != nil {
+		podContainerStatuses := pod.Status.ContainerStatuses
+		for i := range podContainerStatuses {
+			if (podContainerStatuses[i].State.Waiting.Reason == "ImagePullBackOff") || (podContainerStatuses[i].State.Waiting.Reason == "ErrImagePull") {
+				job = nil
+			}
+		}
+	}
+
 	values, err := valuesToYaml(obj.Spec.Values)
 	if err != nil {
 		return req.CheckFailed(installOrUpgradeJob, check, err.Error()).Err(nil)
