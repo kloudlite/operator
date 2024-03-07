@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -65,6 +66,21 @@ const (
 	DeviceDeleted string = "device-deleted"
 )
 
+var (
+	DEV_CHECKLIST = []rApi.CheckMeta{
+		{Name: NSReady},
+		{Name: DnsConfigReady},
+		{Name: KeysAndSecretReady},
+		{Name: ConfigReady},
+		{Name: ServerSvcReady},
+		{Name: ServicesSynced},
+		{Name: ServerReady},
+		{Name: DeviceDeleted},
+	}
+
+	DEV_DESTROY_CHECKLIST = []rApi.CheckMeta{}
+)
+
 // +kubebuilder:rbac:groups=wireguard.kloudlite.io,resources=devices,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=wireguard.kloudlite.io,resources=devices/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=wireguard.kloudlite.io,resources=devices/finalizers,verbs=update
@@ -79,6 +95,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.
 		if x := r.finalize(req); !x.ShouldProceed() {
 			return x.ReconcilerResponse()
 		}
+
 		return ctrl.Result{}, nil
 	}
 
@@ -86,6 +103,10 @@ func (r *Reconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.
 	defer req.PostReconcile()
 
 	if step := req.ClearStatusIfAnnotated(); !step.ShouldProceed() {
+		return step.ReconcilerResponse()
+	}
+
+	if step := req.EnsureCheckList(DEV_CHECKLIST); !step.ShouldProceed() {
 		return step.ReconcilerResponse()
 	}
 
@@ -794,6 +815,13 @@ func (r *Reconciler) ensureDeploy(req *rApi.Request[*wgv1.Device]) stepResult.Re
 func (r *Reconciler) finalize(req *rApi.Request[*wgv1.Device]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
 	check := rApi.Check{Generation: obj.Generation}
+
+	if !slices.Equal(obj.Status.CheckList, DEV_DESTROY_CHECKLIST) {
+		req.Object.Status.CheckList = DEV_DESTROY_CHECKLIST
+		if step := req.UpdateStatus(); !step.ShouldProceed() {
+			return step
+		}
+	}
 
 	failed := func(err error) stepResult.Result {
 		return req.CheckFailed(DeviceDeleted, check, err.Error())

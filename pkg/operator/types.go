@@ -26,6 +26,18 @@ type Check struct {
 	Status     bool   `json:"status"`
 	Message    string `json:"message,omitempty"`
 	Generation int64  `json:"generation,omitempty"`
+
+	State     State        `json:"state,omitempty"`
+	StartedAt *metav1.Time `json:"startedAt,omitempty"`
+	Info      string       `json:"info,omitempty"`
+	Debug     string       `json:"debug,omitempty"`
+	Error     string       `json:"error,omitempty"`
+}
+
+type CheckMeta struct {
+	Name        string `json:"name"`
+	DisplayName string `json:"displayName"`
+	Description string `json:"description"`
 }
 
 // +kubebuilder:object:generate=true
@@ -56,6 +68,7 @@ type Status struct {
 	// ChildConditions   []metav1.Condition `json:"childConditions,omitempty"`
 	// OpsConditions     []metav1.Condition `json:"opsConditions,omitempty"`
 
+	CheckList           []CheckMeta      `json:"checkList,omitempty"`
 	Checks              map[string]Check `json:"checks,omitempty"`
 	LastReadyGeneration int64            `json:"lastReadyGeneration,omitempty"`
 	LastReconcileTime   *metav1.Time     `json:"lastReconcileTime,omitempty"`

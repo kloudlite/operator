@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"maps"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -155,6 +156,18 @@ func (r *Request[T]) EnsureLabelsAndAnnotations() stepResult.Result {
 
 func (r *Request[T]) ShouldReconcile() bool {
 	return r.Object.GetLabels()[constants.ShouldReconcile] != "false"
+}
+
+func (r *Request[T]) EnsureCheckList(expected []CheckMeta) stepResult.Result {
+	if slices.Equal(expected, r.Object.GetStatus().CheckList) {
+		return stepResult.New().Continue(true)
+	}
+
+	r.Object.GetStatus().CheckList = expected
+	if err := r.client.Status().Update(r.ctx, r.Object); err != nil {
+		return stepResult.New().Err(err)
+	}
+	return stepResult.New().RequeueAfter(1 * time.Second)
 }
 
 func (r *Request[T]) EnsureChecks(names ...string) stepResult.Result {
