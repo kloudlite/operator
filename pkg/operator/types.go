@@ -34,10 +34,11 @@ type Check struct {
 	Error     string       `json:"error,omitempty"`
 }
 
+// +kubebuilder:object:generate=true
 type CheckMeta struct {
-	Name        string `json:"name"`
-	DisplayName string `json:"displayName"`
-	Description string `json:"description"`
+	Name        string  `json:"name"`
+	DisplayName string  `json:"displayName"`
+	Description *string `json:"description,omitempty"`
 }
 
 // +kubebuilder:object:generate=true

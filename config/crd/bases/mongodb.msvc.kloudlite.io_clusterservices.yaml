@@ -338,7 +338,6 @@ spec:
                     name:
                       type: string
                   required:
-                  - description
                   - displayName
                   - name
                   type: object
