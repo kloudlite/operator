@@ -73,7 +73,9 @@ var (
 		{Name: ServerReady, Title: "Ensuring server is ready"},
 	}
 
-	DEV_DESTROY_CHECKLIST = []rApi.CheckMeta{}
+	DEV_DESTROY_CHECKLIST = []rApi.CheckMeta{
+		{Name: DeviceDeleted, Title: "Cleaning up device resources"},
+	}
 )
 
 // +kubebuilder:rbac:groups=wireguard.kloudlite.io,resources=devices,verbs=get;list;watch;create;update;patch;delete
@@ -150,7 +152,6 @@ func (r *Reconciler) ensureDnsConfig(req *rApi.Request[*wgv1.Device]) stepResult
 	check := rApi.Check{Generation: obj.Generation, State: rApi.RunningState}
 
 	failed := func(err error) stepResult.Result {
-		check.State = rApi.ErroredState
 		return req.CheckFailed(DnsConfigReady, check, err.Error())
 	}
 
@@ -287,7 +288,6 @@ func (r *Reconciler) ensureSecretKeys(req *rApi.Request[*wgv1.Device]) stepResul
 	check := rApi.Check{Generation: obj.Generation, State: rApi.RunningState}
 
 	failed := func(err error) stepResult.Result {
-		check.State = rApi.ErroredState
 		return req.CheckFailed(KeysAndSecretReady, check, err.Error())
 	}
 
@@ -367,7 +367,6 @@ func (r *Reconciler) ensureSvcCreated(req *rApi.Request[*wgv1.Device]) stepResul
 	check := rApi.Check{Generation: obj.Generation, State: rApi.RunningState}
 
 	failed := func(err error) stepResult.Result {
-		check.State = rApi.ErroredState
 		return req.CheckFailed(ServerSvcReady, check, err.Error())
 	}
 
@@ -415,7 +414,6 @@ func (r *Reconciler) ensureConfig(req *rApi.Request[*wgv1.Device]) stepResult.Re
 	}
 
 	failed := func(err error) stepResult.Result {
-		check.State = rApi.ErroredState
 		return req.CheckFailed(ConfigReady, check, err.Error())
 	}
 
@@ -462,7 +460,6 @@ func (r *Reconciler) ensureServiceSync(req *rApi.Request[*wgv1.Device]) stepResu
 	defer req.LogPostCheck(ServicesSynced)
 
 	failed := func(err error) stepResult.Result {
-		check.State = rApi.ErroredState
 		return req.CheckFailed(ServicesSynced, check, err.Error())
 	}
 

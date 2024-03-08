@@ -283,11 +283,10 @@ func (r *Request[T]) EnsureFinalizers(finalizers ...string) stepResult.Result {
 func (r *Request[T]) CheckFailed(name string, check Check, msg string) stepResult.Result {
 	check.Status = false
 	check.Message = msg
+	check.Error = msg
+	check.State = ErroredState
 	if r.Object.GetStatus().Checks == nil {
 		r.Object.GetStatus().Checks = make(map[string]Check, 1)
-	}
-	if check.State == ErroredState {
-		check.Error = msg
 	}
 
 	r.Object.GetStatus().Checks[name] = check

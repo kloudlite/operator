@@ -59,13 +59,12 @@ const (
 
 var (
 	APP_CHECKLIST = []rApi.CheckMeta{
-		{Name: ImagesLabelled, Title: "Ensuring images are labelled"},
-		{Name: DeploymentSvcAndHpaCreated, Title: "Ensuring Deployment, Service and HPA are created"},
-		{Name: DeploymentReady, Title: "Ensuring Deployment is ready"},
+		{Name: DeploymentSvcAndHpaCreated, Title: "Scaling configured"},
+		{Name: DeploymentReady, Title: "Deployment ready"},
 	}
 
 	APP_DESTROY_CHECKLIST = []rApi.CheckMeta{
-		{Name: CleanedOwnedResources, Title: "Ensuring owned resources are cleaned up"},
+		{Name: CleanedOwnedResources, Title: "Cleaning up resources"},
 	}
 )
 
@@ -152,7 +151,6 @@ func (r *Reconciler) reconLabellingImages(req *rApi.Request[*crdsv1.App]) stepRe
 	defer req.LogPostCheck(ImagesLabelled)
 
 	failed := func(err error) stepResult.Result {
-		check.State = rApi.ErroredState
 		return req.CheckFailed(ImagesLabelled, check, err.Error())
 	}
 
@@ -203,7 +201,6 @@ func (r *Reconciler) ensureDeploymentThings(req *rApi.Request[*crdsv1.App]) step
 	defer req.LogPostCheck(DeploymentSvcAndHpaCreated)
 
 	failed := func(err error) stepResult.Result {
-		check.State = rApi.ErroredState
 		return req.CheckFailed(DeploymentSvcAndHpaCreated, check, err.Error())
 	}
 
@@ -254,7 +251,6 @@ func (r *Reconciler) checkDeploymentReady(req *rApi.Request[*crdsv1.App]) stepRe
 	defer req.LogPostCheck(DeploymentReady)
 
 	failed := func(err error) stepResult.Result {
-		check.State = rApi.ErroredState
 		return req.CheckFailed(DeploymentReady, check, err.Error())
 	}
 
