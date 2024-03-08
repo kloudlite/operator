@@ -15,10 +15,10 @@ import (
 type State string
 
 const (
-	WaitingState   string = "yet-to-be-reconciled"
-	RunningState   string = "under-reconcilation"
-	ErroredState   string = "errored-during-reconcilation"
-	CompletedState string = "finished-reconcilation"
+	WaitingState   State = "yet-to-be-reconciled"
+	RunningState   State = "under-reconcilation"
+	ErroredState   State = "errored-during-reconcilation"
+	CompletedState State = "finished-reconcilation"
 )
 
 // +kubebuilder:object:generate=true

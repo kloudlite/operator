@@ -180,7 +180,9 @@ func (r *Request[T]) EnsureChecks(names ...string) stepResult.Result {
 
 	for i := range names {
 		if _, ok := checks[names[i]]; !ok {
-			checks[names[i]] = Check{}
+			checks[names[i]] = Check{
+				State: WaitingState,
+			}
 		}
 	}
 
@@ -284,6 +286,10 @@ func (r *Request[T]) CheckFailed(name string, check Check, msg string) stepResul
 	if r.Object.GetStatus().Checks == nil {
 		r.Object.GetStatus().Checks = make(map[string]Check, 1)
 	}
+	if check.State == ErroredState {
+		check.Error = msg
+	}
+
 	r.Object.GetStatus().Checks[name] = check
 	r.Object.GetStatus().Message.Set(name, check.Message)
 	r.Object.GetStatus().IsReady = false
