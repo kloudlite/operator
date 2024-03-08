@@ -59,13 +59,13 @@ const (
 
 var (
 	APP_CHECKLIST = []rApi.CheckMeta{
-		{Name: ImagesLabelled, DisplayName: "Ensuring images are labelled"},
-		{Name: DeploymentSvcAndHpaCreated, DisplayName: "Ensuring Deployment, Service and HPA are created"},
-		{Name: DeploymentReady, DisplayName: "Ensuring Deployment is ready"},
+		{Name: ImagesLabelled, Title: "Ensuring images are labelled"},
+		{Name: DeploymentSvcAndHpaCreated, Title: "Ensuring Deployment, Service and HPA are created"},
+		{Name: DeploymentReady, Title: "Ensuring Deployment is ready"},
 	}
 
 	APP_DESTROY_CHECKLIST = []rApi.CheckMeta{
-		{Name: CleanedOwnedResources, DisplayName: "Ensuring owned resources are cleaned up"},
+		{Name: CleanedOwnedResources, Title: "Ensuring owned resources are cleaned up"},
 	}
 )
 

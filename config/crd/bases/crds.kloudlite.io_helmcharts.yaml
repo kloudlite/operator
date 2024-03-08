@@ -1009,13 +1009,13 @@ spec:
                   properties:
                     description:
                       type: string
-                    displayName:
-                      type: string
                     name:
                       type: string
+                    title:
+                      type: string
                   required:
-                  - displayName
                   - name
+                  - title
                   type: object
                 type: array
               checks:

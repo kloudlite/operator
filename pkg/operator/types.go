@@ -37,7 +37,7 @@ type Check struct {
 // +kubebuilder:object:generate=true
 type CheckMeta struct {
 	Name        string  `json:"name"`
-	DisplayName string  `json:"displayName"`
+	Title       string  `json:"title"`
 	Description *string `json:"description,omitempty"`
 }
 
