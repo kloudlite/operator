@@ -1,0 +1,25 @@
+image:
+  agent: ghcr.io/kloudlite/operator/components/multi-cluster-agent
+  gateway: ghcr.io/kloudlite/operator/components/multi-cluster-gateway
+  tag: v1.0.5-nightly
+  pullPolicy: IfNotPresent
+
+coredns_svc_ip: 10.43.0.10
+resources:
+  limits:
+    cpu: 50m
+    memory: 50Mi
+  requests:
+    cpu: 25m
+    memory: 25Mi
+
+server_config:
+  #example: wrhprQu1BRNhpNIe8Skjh+aKlPJrhqztD0xBBvkh+uk=
+  privateKey: ""
+  # example 10.13.0.1/32
+  ip: ""
+  peers:
+    - ip: ""
+      publicKey: ""
+      endpoint: ""
+      allowedIPs: ""
