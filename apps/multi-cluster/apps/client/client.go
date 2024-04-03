@@ -71,7 +71,9 @@ func (c *client) reconcile() error {
 		return err
 	}
 
-	c.client.Sync(wgConfg)
+	if err := c.client.Sync(wgConfg); err != nil {
+		return err
+	}
 
 	return nil
 }

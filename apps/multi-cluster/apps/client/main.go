@@ -32,5 +32,9 @@ func Run() error {
 		publicKey:  pub,
 	}
 
+	if err := c.client.Stop(); err != nil {
+		c.logger.Error(err)
+	}
+
 	return c.start()
 }

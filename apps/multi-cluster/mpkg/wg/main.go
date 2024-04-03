@@ -10,6 +10,12 @@ import (
 )
 
 func (c *client) Stop() error {
+	b, err := c.execCmd(fmt.Sprintf("ip link delete %s", c.ifName), nil)
+	if err != nil {
+		c.logger.Infof(string(b))
+		return err
+	}
+
 	return nil
 }
 
