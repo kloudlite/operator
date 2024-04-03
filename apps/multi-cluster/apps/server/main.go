@@ -40,7 +40,7 @@ func Run() error {
 		return err
 	}
 
-	l.Infof("listening on addr %s", env.Addr)
+	l.WithName("gatew").Infof("listening on addr %s", env.Addr)
 	if err := app.Listen(env.Addr); err != nil {
 		return err
 	}

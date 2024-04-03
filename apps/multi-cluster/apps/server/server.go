@@ -86,6 +86,10 @@ func (s *server) Start() error {
 			return c.SendStatus(fiber.StatusInternalServerError)
 		}
 
+		if err := s.sync(); err != nil {
+			return c.SendStatus(fiber.StatusInternalServerError)
+		}
+
 		return c.Send(b)
 	})
 

@@ -15,7 +15,7 @@ func main() {
 }
 
 func Run() error {
-	fmt.Println("Run", flags.Mode)
+	fmt.Println("Running", flags.Mode)
 	if flags.Mode == "server" {
 		return server.Run()
 	}

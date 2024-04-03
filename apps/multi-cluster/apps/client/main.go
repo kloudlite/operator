@@ -25,7 +25,7 @@ func Run() error {
 	}
 
 	c := &client{
-		logger:     l,
+		logger:     l.WithName("agent"),
 		client:     wgc,
 		env:        env,
 		privateKey: priv,
@@ -35,6 +35,8 @@ func Run() error {
 	if err := c.client.Stop(); err != nil {
 		c.logger.Error(err)
 	}
+
+	defer c.client.Stop()
 
 	return c.start()
 }
