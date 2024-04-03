@@ -80,7 +80,7 @@ func getIp(publicKey string) (string, int, error) {
 		return s.IpAddress, 0, nil
 	}
 
-	for i := 100; i < 3000; i++ {
+	for i := constants.AgentIpRangeMin; i < constants.AgentIpRangeMax; i++ {
 		if ipMap[i] == "" {
 			ipMap[i] = publicKey
 			b, err := wg.GetRemoteDeviceIp(int64(i))

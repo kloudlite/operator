@@ -1,6 +1,9 @@
 package wg
 
 import (
+	"fmt"
+
+	"github.com/kloudlite/operator/apps/multi-cluster/constants"
 	"github.com/seancfoley/ipaddress-go/ipaddr"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
@@ -28,7 +31,7 @@ func GeneratePublicKey(privateKey string) ([]byte, error) {
 }
 
 func GetRemoteDeviceIp(deviceOffcet int64) ([]byte, error) {
-	deviceRange := ipaddr.NewIPAddressString("10.13.0.0/16")
+	deviceRange := ipaddr.NewIPAddressString(fmt.Sprintf("%s/16", constants.WgIpBase))
 
 	if address, addressError := deviceRange.ToAddress(); addressError == nil {
 		increment := address.Increment(deviceOffcet)

@@ -7,11 +7,9 @@ import (
 
 	"os/exec"
 	"strings"
-
-	"github.com/kloudlite/operator/pkg/logging"
 )
 
-func ExecCmd(cmdString string, env map[string]string, logger logging.Logger, verbose bool) ([]byte, error) {
+func (c *client) execCmd(cmdString string, env map[string]string) ([]byte, error) {
 	out, errOut := &bytes.Buffer{}, &bytes.Buffer{}
 
 	r := csv.NewReader(strings.NewReader(cmdString))
@@ -21,8 +19,8 @@ func ExecCmd(cmdString string, env map[string]string, logger logging.Logger, ver
 		return nil, err
 	}
 	cmd := exec.Command(cmdArr[0], cmdArr[1:]...)
-	if verbose {
-		logger.Infof(strings.Join(cmdArr, " "))
+	if c.verbose {
+		c.logger.Infof(strings.Join(cmdArr, " "))
 
 		cmd.Stdout = out
 	}

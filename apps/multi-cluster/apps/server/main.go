@@ -3,6 +3,7 @@ package server
 import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/kloudlite/operator/apps/multi-cluster/apps/server/env"
+	"github.com/kloudlite/operator/apps/multi-cluster/mpkg/wg"
 	"github.com/kloudlite/operator/pkg/logging"
 )
 
@@ -23,7 +24,13 @@ func Run() error {
 		return err
 	}
 
+	c, err := wg.NewClient()
+	if err != nil {
+		return err
+	}
+
 	mserver := server{
+		client: c,
 		logger: l,
 		app:    app,
 		env:    env,

@@ -20,19 +20,17 @@ type client struct {
 	env    *env.Env
 	logger logging.Logger
 
+	client     wg.Client
 	privateKey []byte
 	publicKey  []byte
-	// IpAddress  string
 }
 
 func (c *client) start() error {
 	for {
 		if err := c.reconcile(); err != nil {
 			c.logger.Error(err)
-			wait()
-			continue
 		}
-		wait()
+		common.ReconWait()
 	}
 }
 
@@ -73,7 +71,7 @@ func (c *client) reconcile() error {
 		return err
 	}
 
-	wg.ResyncWg(c.logger, wgConfg)
+	c.client.Sync(wgConfg)
 
 	return nil
 }
