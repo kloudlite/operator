@@ -10,7 +10,7 @@ import (
 	"github.com/kloudlite/operator/pkg/logging"
 )
 
-const interfaceName = "wg0"
+const interfaceName = "kl-wg"
 
 func startWg(logger logging.Logger, conf []byte) error {
 	if err := os.WriteFile(fmt.Sprintf("/etc/wireguard/%s.conf", interfaceName), conf, 0644); err != nil {
@@ -69,7 +69,7 @@ func updateWg(logger logging.Logger, conf []byte) error {
 
 func ResyncWg(logger logging.Logger, conf []byte) error {
 	b, err := ExecCmd(fmt.Sprintf("wg show %s", interfaceName), nil, logger, true)
-	if err != nil && strings.Contains(string(b), "No such device") || !strings.Contains(string(b), "interface: wg0") {
+	if err != nil && strings.Contains(string(b), "No such device") || !strings.Contains(string(b), fmt.Sprintf("interface: %s", interfaceName)) {
 		logger.Infof("wireguard is not running, starting it")
 		if err := startWg(logger, conf); err != nil {
 			logger.Error(err)

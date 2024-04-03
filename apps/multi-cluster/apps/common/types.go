@@ -3,10 +3,12 @@ package common
 import "encoding/json"
 
 type Peer struct {
-	PublicKey string `json:"publicKey"`
-	IpAddress  string   `json:"ip"`
+	PublicKey  string   `json:"publicKey"`
+	IpAddress  string   `json:"ip,omitempty"`
 	AllowedIPs []string `json:"allowedIPs,omitempty"`
 	Endpoint   string   `json:"endpoint,omitempty"`
+
+	IpId int `json:"ipId,omitempty"`
 }
 
 func (p *Peer) parseJson(b []byte) error {
@@ -14,10 +16,11 @@ func (p *Peer) parseJson(b []byte) error {
 }
 
 type PeerReq struct {
-	PublicKey  string   `json:"publicKey"`
-	IpAddress  string   `json:"ipAddress"`
-	Endpoint   string   `json:"endpoint,omitempty"`
-	AllowedIPs []string `json:"allowedIPs,omitempty"`
+	PublicKey string `json:"publicKey"`
+	IpAddress string `json:"ip,omitempty"`
+	// IpAddress  string   `json:"ipAddress"`
+	// Endpoint   string   `json:"endpoint,omitempty"`
+	// AllowedIPs []string `json:"allowedIPs,omitempty"`
 }
 
 func (s *PeerReq) ToJson() ([]byte, error) {
@@ -30,8 +33,9 @@ func (s *PeerReq) ParseJson(b []byte) error {
 
 type PeerResp struct {
 	PublicKey  string   `json:"publicKey"`
-	EndPoint   string   `json:"endpoint,omitempty"`
+	Endpoint   string   `json:"endpoint,omitempty"`
 	AllowedIPs []string `json:"allowedIPs,omitempty"`
+	IpAddress  string   `json:"ip,omitempty"`
 }
 
 func (s *PeerResp) ToJson() ([]byte, error) {

@@ -1,6 +1,6 @@
 [Interface]
 Address = {{ .IpAddress}}
-ListenPort = 8080
+ListenPort = 51820
 PrivateKey = {{ .PrivateKey }}
 
 PostUp = iptables -A FORWARD -i eth0 -j ACCEPT; iptables -t nat -A POSTROUTING -o %i -j MASQUERADE
@@ -13,9 +13,6 @@ PostDown = iptables -D FORWARD -i eth0 -j ACCEPT; iptables -t nat -D POSTROUTING
 {{ with $peer }}
 [Peer]
 PublicKey = {{ .PublicKey }}
-{{- if .Endpoint }}
-Endpoint = {{ .Endpoint }}
-{{- end}}
 
 {{- if .AllowedIPs }}
 AllowedIPs = {{ range $i, $ip := .AllowedIPs }}
@@ -35,6 +32,7 @@ Endpoint = {{ .Endpoint }}
 {{ with $peer }}
 [Peer]
 PublicKey = {{ .PublicKey }}
+
 {{- if .Endpoint }}
 Endpoint = {{ .Endpoint }}
 {{- end}}
@@ -44,10 +42,6 @@ AllowedIPs = {{ range $i, $ip := .AllowedIPs }}
 {{- if $i}}, {{- end}}
 {{- $ip }}
 {{- end}}
-{{- end}}
-
-{{- if .Endpoint }}
-Endpoint = {{ .Endpoint }}
 {{- end}}
 
 {{- end }}

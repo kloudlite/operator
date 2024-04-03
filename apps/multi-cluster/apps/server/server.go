@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -69,24 +70,24 @@ func (s *server) Start() error {
 		if err := p.ParseJson(c.Body()); err != nil {
 			return c.SendStatus(fiber.StatusBadRequest)
 		}
-		b, err := wg.GeneratePublicKey(config.PrivateKey)
+
+		pr, err := config.upsertPeer(s.logger, common.Peer{
+			PublicKey: p.PublicKey,
+		})
+
 		if err != nil {
 			s.logger.Error(err)
 			return c.SendStatus(fiber.StatusInternalServerError)
 		}
 
-		config.upsertPeer(common.Peer{
-			PublicKey: p.PublicKey,
-			IpAddress: p.IpAddress,
-		})
-
-		pr := common.PeerReq{
-			PublicKey:  string(b),
+		presp := common.PeerResp{
+			IpAddress:  fmt.Sprintf("%s/32", pr.IpAddress),
+			PublicKey:  config.PublicKey,
 			Endpoint:   s.env.Endpoint,
 			AllowedIPs: config.getAllAllowedIPs(),
 		}
 
-		b, err = pr.ToJson()
+		b, err := presp.ToJson()
 		if err != nil {
 			return c.SendStatus(fiber.StatusInternalServerError)
 		}

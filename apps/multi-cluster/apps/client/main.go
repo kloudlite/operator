@@ -1,8 +1,8 @@
 package client
 
 import (
-	"fmt"
-	"os"
+	// "fmt"
+	// "os"
 
 	"github.com/kloudlite/operator/apps/multi-cluster/apps/client/env"
 	"github.com/kloudlite/operator/apps/multi-cluster/mpkg/wg"
@@ -12,10 +12,10 @@ import (
 func Run() error {
 	env := env.GetEnvOrDie()
 
-	ip, ok := os.LookupEnv("MY_IP_ADDRESS")
-	if !ok {
-		return fmt.Errorf("MY_IP_ADDRESS not set")
-	}
+	// ip, ok := os.LookupEnv("MY_IP_ADDRESS")
+	// if !ok {
+	// 	return fmt.Errorf("MY_IP_ADDRESS not set")
+	// }
 
 	pub, priv, err := wg.GenerateWgKeys()
 	if err != nil {
@@ -32,7 +32,7 @@ func Run() error {
 		env:        env,
 		privateKey: priv,
 		publicKey:  pub,
-		IpAddress:  generateIp(ip),
+		// IpAddress:  generateIp(ip),
 	}
 
 	return c.start()

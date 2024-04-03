@@ -7,7 +7,9 @@ import (
 
 	"github.com/kloudlite/operator/apps/multi-cluster/apps/common"
 	"github.com/kloudlite/operator/apps/multi-cluster/constants"
+	"github.com/kloudlite/operator/apps/multi-cluster/mpkg/wg"
 	"github.com/kloudlite/operator/apps/multi-cluster/templates"
+	"github.com/kloudlite/operator/pkg/logging"
 	"sigs.k8s.io/yaml"
 )
 
@@ -20,12 +22,17 @@ type PeerMap map[string]struct {
 	common.Peer
 }
 
+type IpMap map[int]string
+
+var ipMap = make(IpMap)
+
 var peerMap = make(PeerMap)
 var config Config
 
 type Config struct {
 	Endpoint   string `json:"endpoint"`
 	PrivateKey string `json:"privateKey"`
+	PublicKey  string `json:"publicKey,omitempty"`
 	IpAddress  string `json:"ip"`
 
 	Peers         []common.Peer `json:"peers,omitempty"`
@@ -47,6 +54,13 @@ func (s *Config) load(cPath string) error {
 		return err
 	}
 
+	pub, err := wg.GeneratePublicKey(config.PrivateKey)
+	if err != nil {
+		return err
+	}
+
+	s.PublicKey = string(pub)
+
 	return nil
 }
 
@@ -61,8 +75,39 @@ func (s Config) getAllAllowedIPs() []string {
 	return ips
 }
 
-func (s *Config) upsertPeer(p common.Peer) bool {
-	p.AllowedIPs = []string{fmt.Sprintf("%s/32", p.IpAddress)}
+func getIp(publicKey string) (string, int, error) {
+	if s, ok := peerMap[publicKey]; ok {
+		return s.IpAddress, 0, nil
+	}
+
+	for i := 100; i < 3000; i++ {
+		if ipMap[i] == "" {
+			ipMap[i] = publicKey
+			b, err := wg.GetRemoteDeviceIp(int64(i))
+			if err != nil {
+				return "", 0, err
+			}
+
+			return string(b), i, nil
+		}
+	}
+
+	return "", 0, fmt.Errorf("no available ip")
+}
+
+func (s *Config) upsertPeer(logger logging.Logger, p common.Peer) (*common.Peer, error) {
+
+	ip, ipId, err := getIp(p.PublicKey)
+	if err != nil {
+		return nil, err
+	}
+
+	p.AllowedIPs = []string{
+		fmt.Sprintf("%s/32", ip),
+	}
+	p.IpId = ipId
+
+	p.IpAddress = ip
 
 	defer func() {
 		peerMap[p.PublicKey] = struct {
@@ -74,24 +119,36 @@ func (s *Config) upsertPeer(p common.Peer) bool {
 		}
 	}()
 
+	if pm, ok := peerMap[p.PublicKey]; ok {
+		for i, p2 := range s.InternalPeers {
+			if p2.PublicKey == pm.PublicKey {
+				s.InternalPeers[i] = p
+				return &p, nil
+			}
+		}
+		return nil, fmt.Errorf("peer not found")
+	}
+
 	for i, peer := range s.InternalPeers {
 		if peer.PublicKey == p.PublicKey {
 			s.InternalPeers[i] = p
-			return true
+			return &p, nil
 		}
 	}
 
 	s.InternalPeers = append(s.InternalPeers, p)
-	return true
+
+	return &p, nil
 }
 
 func (s *Config) cleanPeers() {
 	for k, v := range peerMap {
 		if time.Since(v.time) > constants.ExpiresIn*time.Second {
 			delete(peerMap, k)
+			delete(ipMap, v.IpId)
 
 			for i, p := range s.InternalPeers {
-				if p.PublicKey == k {
+				if p.IpAddress == k {
 					s.InternalPeers = append(s.InternalPeers[:i], s.InternalPeers[i+1:]...)
 					return
 				}

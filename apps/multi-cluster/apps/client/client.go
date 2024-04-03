@@ -22,7 +22,7 @@ type client struct {
 
 	privateKey []byte
 	publicKey  []byte
-	IpAddress  string
+	// IpAddress  string
 }
 
 func (c *client) start() error {
@@ -51,14 +51,14 @@ func (c *client) reconcile() error {
 		return err
 	}
 
-	endpointIp, err := c.getDnsIp(pr.EndPoint)
+	endpointIp, err := c.getDnsIp(pr.Endpoint)
 	if err != nil {
 		return err
 	}
 
 	config := Config{
 		PrivateKey: string(c.privateKey),
-		IpAddress:  c.IpAddress,
+		IpAddress:  pr.IpAddress,
 		Peers: []common.Peer{
 			{
 				PublicKey:  pr.PublicKey,
@@ -82,7 +82,7 @@ func (c *client) getDnsIp(domain string) (*string, error) {
 	sp := strings.Split(domain, ":")
 
 	if len(sp) != 2 {
-		return nil, errors.New("Invalid domain")
+		return nil, fmt.Errorf("Invalid endpoint: %s", domain)
 	}
 
 	dom, port := sp[0], sp[1]
@@ -109,7 +109,7 @@ func (c *client) getDnsIp(domain string) (*string, error) {
 func (c *client) sendPing() ([]byte, error) {
 	data := common.PeerReq{
 		PublicKey: string(c.publicKey),
-		IpAddress: c.IpAddress,
+		IpAddress: c.env.MyIp,
 	}
 
 	b, err := data.ToJson()
