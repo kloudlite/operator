@@ -6,13 +6,20 @@ image:
 
 coredns_svc_ip: 10.43.0.10
 resources:
-  limits:
-    cpu: 50m
-    memory: 50Mi
-  requests:
-    cpu: 25m
-    memory: 25Mi
-
+  gateway:
+    limits:
+      cpu: 50m
+      memory: 50Mi
+    requests:
+      cpu: 15m
+      memory: 15Mi
+  agent:
+    limits:
+      cpu: 20m
+      memory: 20Mi
+    requests:
+      cpu: 15m
+      memory: 15Mi
 nodeport: ""
 server_config:
   # privateKey: wrhprQu1BRNhpNIe8Skjh+aKlPJrhqztD0xBBvkh+uk=

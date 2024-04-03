@@ -25,6 +25,8 @@ type client struct {
 	publicKey  []byte
 }
 
+var prevConf string
+
 func (c *client) start() error {
 	for {
 		if err := c.reconcile(); err != nil {
@@ -35,8 +37,8 @@ func (c *client) start() error {
 }
 
 func (c *client) reconcile() error {
-	c.logger.Infof("reconciling start")
-	defer c.logger.Infof("reconcilation end")
+	// c.logger.Infof("reconciling start")
+	// defer c.logger.Infof("reconcilation end")
 
 	b, err := c.sendPing()
 	if err != nil {
@@ -65,6 +67,14 @@ func (c *client) reconcile() error {
 			},
 		},
 	}
+
+	curr := config.String()
+	if prevConf == curr {
+		// c.logger.Infof("no change in config")
+		return nil
+	}
+
+	prevConf = curr
 
 	wgConfg, err := config.toConfigBytes()
 	if err != nil {

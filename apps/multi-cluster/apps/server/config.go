@@ -39,6 +39,10 @@ type Config struct {
 	InternalPeers []common.Peer `json:"internal_peers,omitempty"`
 }
 
+func (s *Config) String() string {
+	return fmt.Sprintf("%#v", *s)
+}
+
 func (s *Config) load(cPath string) error {
 
 	if _, err := os.Stat(cPath); err != nil {

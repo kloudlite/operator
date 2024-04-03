@@ -3,7 +3,7 @@
 {{- $image := .Values.image.gateway -}}
 {{- $tag := .Values.image.tag -}}
 {{- $pullPolicy := .Values.image.pullPolicy -}}
-{{- $resources := .Values.resources -}}
+{{- $resources := .Values.resources.gateway -}}
 {{- $server_config := .Values.server_config -}}
 {{- $nodeport := .Values.nodeport -}}
 

@@ -3,7 +3,7 @@
 {{- $image := .Values.image.agent -}}
 {{- $tag := .Values.image.tag -}}
 {{- $pullPolicy := .Values.image.pullPolicy -}}
-{{- $resources := .Values.resources -}}
+{{- $resources := .Values.resources.agent -}}
 {{- $coredns_svc_ip := .Values.coredns_svc_ip -}}
 
 apiVersion: apps/v1

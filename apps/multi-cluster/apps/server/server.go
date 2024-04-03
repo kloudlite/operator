@@ -22,10 +22,18 @@ var (
 	mu sync.Mutex
 )
 
+var prevConf string
+
 func (s *server) sync() error {
-	mu.Lock()
-	defer mu.Unlock()
 	config.cleanPeers()
+
+	var curr = config.String()
+	if prevConf == curr {
+		// s.logger.Infof("no change in config")
+		return nil
+	}
+
+	prevConf = config.String()
 
 	b, err := config.toConfigBytes()
 	if err != nil {
@@ -44,22 +52,25 @@ func (s *server) Start() error {
 		return err
 	}
 
-	go func() {
-		defer s.client.Stop()
-
-		for {
-			if err := s.sync(); err != nil {
-				s.logger.Error(err)
-			}
-			common.ReconWait()
-		}
-	}()
+	// go func() {
+	// 	defer s.client.Stop()
+	//
+	// 	for {
+	// 		if err := s.sync(); err != nil {
+	// 			s.logger.Error(err)
+	// 		}
+	// 		common.ReconWait()
+	// 	}
+	// }()
 
 	notFound := func(c *fiber.Ctx) error {
 		return c.SendStatus(fiber.StatusNotFound)
 	}
 
 	s.app.Post("/peer", func(c *fiber.Ctx) error {
+		mu.Lock()
+		defer mu.Unlock()
+
 		var p common.PeerReq
 		if err := p.ParseJson(c.Body()); err != nil {
 			return c.SendStatus(fiber.StatusBadRequest)
