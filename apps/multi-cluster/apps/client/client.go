@@ -31,6 +31,8 @@ func (c *client) start() error {
 	for {
 		if err := c.reconcile(); err != nil {
 			c.logger.Error(err)
+			time.Sleep(time.Second * 5)
+			continue
 		}
 		common.ReconWait()
 	}

@@ -2,8 +2,8 @@ package constants
 
 const (
 	WgIpBase      = "10.13.0.0"
-	ReconDuration = 5
-	ExpiresIn     = 8
+	ReconDuration = 15
+	ExpiresIn     = 60
 
 	IfaceName = "kl-wg"
 
