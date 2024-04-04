@@ -3,7 +3,7 @@ package common
 import (
 	"time"
 
-	"github.com/kloudlite/operator/apps/multi-cluster/constants"
+	"github.com/kloudlite/operator/operators/wireguard/apps/multi-cluster/constants"
 )
 
 func ReconWait() {

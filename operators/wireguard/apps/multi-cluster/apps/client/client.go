@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kloudlite/operator/apps/multi-cluster/apps/client/env"
-	"github.com/kloudlite/operator/apps/multi-cluster/apps/common"
-	"github.com/kloudlite/operator/apps/multi-cluster/mpkg/wg"
+	"github.com/kloudlite/operator/operators/wireguard/apps/multi-cluster/apps/client/env"
+	"github.com/kloudlite/operator/operators/wireguard/apps/multi-cluster/apps/common"
+	"github.com/kloudlite/operator/operators/wireguard/apps/multi-cluster/mpkg/wg"
 	"github.com/kloudlite/operator/pkg/logging"
 )
 

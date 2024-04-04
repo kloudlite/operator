@@ -3,8 +3,8 @@ package client
 import (
 	"fmt"
 
-	"github.com/kloudlite/operator/apps/multi-cluster/apps/common"
-	"github.com/kloudlite/operator/apps/multi-cluster/templates"
+	"github.com/kloudlite/operator/operators/wireguard/apps/multi-cluster/apps/common"
+	"github.com/kloudlite/operator/operators/wireguard/apps/multi-cluster/templates"
 )
 
 type Config struct {

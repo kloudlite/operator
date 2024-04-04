@@ -8,7 +8,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/kloudlite/operator/apps/multi-cluster/constants"
+	"github.com/kloudlite/operator/operators/wireguard/apps/multi-cluster/constants"
 	"github.com/kloudlite/operator/pkg/logging"
 	"golang.zx2c4.com/wireguard/wgctrl"
 )

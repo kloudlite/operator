@@ -21,13 +21,13 @@ tasks:
     env:
       CGO_ENABLED: 0
     cmds:
-      - go build -ldflags="-s -w -X github.com/kloudlite/operator/apps/multi-cluster/flags.Mode=server" -o ./bin/server main.go
+      - go build -ldflags="-s -w -X github.com/kloudlite/operator/operators/wireguard/apps/multi-cluster/flags.Mode=server" -o ./bin/server main.go
 
   client:build:
     env:
       CGO_ENABLED: 0
     cmds:
-      - go build -ldflags="-s -w -X github.com/kloudlite/operator/apps/multi-cluster/flags.Mode=client" -o ./bin/client main.go
+      - go build -ldflags="-s -w -X github.com/kloudlite/operator/operators/wireguard/apps/multi-cluster/flags.Mode=client" -o ./bin/client main.go
 
   docker-build:client:
     preconditions:

@@ -5,7 +5,7 @@ import (
 	"embed"
 	"text/template"
 
-	text_templates "github.com/kloudlite/operator/apps/multi-cluster/mpkg/text-template"
+	text_templates "github.com/kloudlite/operator/operators/wireguard/apps/multi-cluster/mpkg/text-template"
 )
 
 type TemplateName string

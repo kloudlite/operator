@@ -8,7 +8,7 @@ type Peer struct {
 	AllowedIPs []string `json:"allowedIPs,omitempty"`
 	Endpoint   string   `json:"endpoint,omitempty"`
 
-	IpId int `json:"ipId,omitempty"`
+	IpId *int `json:"ipId,omitempty"`
 }
 
 func (p *Peer) parseJson(b []byte) error {
@@ -18,9 +18,6 @@ func (p *Peer) parseJson(b []byte) error {
 type PeerReq struct {
 	PublicKey string `json:"publicKey"`
 	IpAddress string `json:"ip,omitempty"`
-	// IpAddress  string   `json:"ipAddress"`
-	// Endpoint   string   `json:"endpoint,omitempty"`
-	// AllowedIPs []string `json:"allowedIPs,omitempty"`
 }
 
 func (s *PeerReq) ToJson() ([]byte, error) {

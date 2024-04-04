@@ -3,7 +3,7 @@ package wg
 import (
 	"fmt"
 
-	"github.com/kloudlite/operator/apps/multi-cluster/constants"
+	"github.com/kloudlite/operator/operators/wireguard/apps/multi-cluster/constants"
 	"github.com/seancfoley/ipaddress-go/ipaddr"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )

@@ -5,10 +5,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/kloudlite/operator/apps/multi-cluster/apps/common"
-	"github.com/kloudlite/operator/apps/multi-cluster/constants"
-	"github.com/kloudlite/operator/apps/multi-cluster/mpkg/wg"
-	"github.com/kloudlite/operator/apps/multi-cluster/templates"
+	"github.com/kloudlite/operator/operators/wireguard/apps/multi-cluster/apps/common"
+	"github.com/kloudlite/operator/operators/wireguard/apps/multi-cluster/constants"
+	"github.com/kloudlite/operator/operators/wireguard/apps/multi-cluster/mpkg/wg"
+	"github.com/kloudlite/operator/operators/wireguard/apps/multi-cluster/templates"
 	"github.com/kloudlite/operator/pkg/logging"
 	"sigs.k8s.io/yaml"
 )
@@ -79,7 +79,7 @@ func (s Config) getAllAllowedIPs() []string {
 	return ips
 }
 
-func getIp(publicKey string) (string, int, error) {
+func getIp(publicKey string) (string, *int, error) {
 	if s, ok := peerMap[publicKey]; ok {
 		return s.IpAddress, s.IpId, nil
 	}
@@ -89,14 +89,14 @@ func getIp(publicKey string) (string, int, error) {
 			ipMap[i] = publicKey
 			b, err := wg.GetRemoteDeviceIp(int64(i))
 			if err != nil {
-				return "", 0, err
+				return "", nil, err
 			}
 
-			return string(b), i, nil
+			return string(b), nil, nil
 		}
 	}
 
-	return "", 0, fmt.Errorf("no available ip")
+	return "", nil, fmt.Errorf("no available ip")
 }
 
 func (s *Config) upsertPeer(logger logging.Logger, p common.Peer) (*common.Peer, error) {
@@ -149,7 +149,9 @@ func (s *Config) cleanPeers() {
 	for k, v := range peerMap {
 		if time.Since(v.time) > constants.ExpiresIn*time.Second {
 			delete(peerMap, k)
-			delete(ipMap, v.IpId)
+			if v.IpId != nil {
+				delete(ipMap, *v.IpId)
+			}
 
 			for i, p := range s.InternalPeers {
 				if p.PublicKey == k {
