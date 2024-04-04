@@ -152,7 +152,7 @@ func (s *Config) cleanPeers() {
 			delete(ipMap, v.IpId)
 
 			for i, p := range s.InternalPeers {
-				if p.IpAddress == k {
+				if p.PublicKey == k {
 					s.InternalPeers = append(s.InternalPeers[:i], s.InternalPeers[i+1:]...)
 					return
 				}
