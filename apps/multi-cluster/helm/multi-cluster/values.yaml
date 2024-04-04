@@ -22,7 +22,7 @@ resources:
       memory: 15Mi
 nodeport: ""
 server_config:
-  # privateKey: wrhprQu1BRNhpNIe8Skjh+aKlPJrhqztD0xBBvkh+uk=
+  # privateKey: ""
   # ip: 10.13.0.1/32
   # peers:
   #   - ip: ""
