@@ -81,7 +81,7 @@ func (s Config) getAllAllowedIPs() []string {
 
 func getIp(publicKey string) (string, int, error) {
 	if s, ok := peerMap[publicKey]; ok {
-		return s.IpAddress, 0, nil
+		return s.IpAddress, s.IpId, nil
 	}
 
 	for i := constants.AgentIpRangeMin; i < constants.AgentIpRangeMax; i++ {

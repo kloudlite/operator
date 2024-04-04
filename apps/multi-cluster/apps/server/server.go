@@ -33,6 +33,8 @@ func (s *server) sync() error {
 		return nil
 	}
 
+	s.logger.Infof("config changed: %s vs %s", curr, prevConf)
+
 	prevConf = config.String()
 
 	b, err := config.toConfigBytes()
