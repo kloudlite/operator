@@ -19,7 +19,7 @@ func Run() error {
 		return err
 	}
 
-	wgc, err := wg.NewClient()
+	wgc, err := wg.NewClient(env.Interface)
 	if err != nil {
 		return err
 	}

@@ -1,18 +1,19 @@
-{{- $name := printf "%s-gateway" .Release.Name -}}
-{{- $namespace := .Release.Namespace -}}
-{{- $image := .Values.image.gateway -}}
-{{- $tag := .Values.image.tag -}}
-{{- $pullPolicy := .Values.image.pullPolicy -}}
-{{- $resources := .Values.resources.gateway -}}
-{{- $server_config := .Values.server_config -}}
-{{- $nodeport := .Values.nodeport -}}
+{{- $name := get . "name"}}
+{{- $namespace := get . "namespace"}}
+{{- $image := get . "image"}}
+{{- $resources := get . "resources"}}
+{{- $server_config := get . "serverConfig"}}
+{{- $nodeport := get . "nodeport"}}
+{{- $ownerRefs := get . "ownerRefs" -}}
+{{- $interface := get . "interface" -}}
 
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels: &labels
-    kloudlite.io/cluster-gateway: "true"
-    kloudlite.io/pod-type: {{ $name }}
+    kloudlite.io/wg-cluster-connection.name: {{ $name }}
+    kloudlite.io/wg-cluster-connection.resource: "gateway"
+  ownerReferences: {{ $ownerRefs | toJson }}
   name: {{ $name }}
   namespace: {{ $namespace }}
 spec:
@@ -27,9 +28,11 @@ spec:
       labels: *labels
     spec:
       containers:
-      - image: {{ $image }}:{{ $tag }}
-        imagePullPolicy: {{ $pullPolicy }}
+      - image: {{ $image }}
+        imagePullPolicy: Always
         env:
+        - name: WG_INTERFACE
+          value: {{ $interface }}
         - name: ADDR
           value: :3000
         - name: CONFIG_PATH
@@ -93,13 +96,17 @@ spec:
 apiVersion: v1
 stringData:
   server-config: |+
-    {{ $server_config | toYaml | nindent 4 }}
+    {{ $server_config | nindent 4 }}
   sysctl: net.ipv4.ip_forward=1
 
 kind: Secret
 metadata:
   name: {{ $name }}-configs
   namespace: {{ $namespace }}
+  ownerReferences: {{ $ownerRefs | toJson }}
+  labels:
+    kloudlite.io/wg-cluster-connection.name: {{ $name }}
+    kloudlite.io/wg-cluster-connection.resource: "gateway"
 type: Opaque
 ---
 
@@ -107,8 +114,9 @@ apiVersion: v1
 kind: Service
 metadata:
   labels: &labels
-    kloudlite.io/cluster-gateway: "true"
-    kloudlite.io/pod-type: {{ $name }}
+    kloudlite.io/wg-cluster-connection.name: {{ $name }}
+    kloudlite.io/wg-cluster-connection.resource: "gateway"
+  ownerReferences: {{ $ownerRefs | toJson }}
   name: {{ $name }}
   namespace: {{ $namespace }}
 spec:
@@ -122,8 +130,9 @@ apiVersion: v1
 kind: Service
 metadata:
   labels: &labels
-    kloudlite.io/cluster-gateway: "true"
-    kloudlite.io/pod-type: {{ $name }}
+    kloudlite.io/wg-cluster-connection.name: {{ $name }}
+    kloudlite.io/wg-cluster-connection.resource: "gateway"
+  ownerReferences: {{ $ownerRefs | toJson }}
   name: {{ $name }}-external
   namespace: {{ $namespace }}
 spec:

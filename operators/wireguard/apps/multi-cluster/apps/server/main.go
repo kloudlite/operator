@@ -24,7 +24,7 @@ func Run() error {
 		return err
 	}
 
-	c, err := wg.NewClient()
+	c, err := wg.NewClient(env.Interface)
 	if err != nil {
 		return err
 	}

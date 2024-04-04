@@ -8,7 +8,6 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/kloudlite/operator/operators/wireguard/apps/multi-cluster/constants"
 	"github.com/kloudlite/operator/pkg/logging"
 	"golang.zx2c4.com/wireguard/wgctrl"
 )
@@ -61,10 +60,8 @@ func (c *client) startWg(conf []byte) error {
 
 	b, err := c.execCmd(fmt.Sprintf("wg-quick up %s", c.ifName), nil)
 	if err != nil {
-		if c.verbose {
-			c.logger.Error(err)
-			c.logger.Infof(string(b))
-		}
+		c.logger.Error(err)
+		c.logger.Infof(string(b))
 		return err
 	}
 
@@ -75,7 +72,6 @@ func (c *client) startWg(conf []byte) error {
 var prevConf []byte
 
 func (c *client) updateWg(conf []byte) error {
-
 	fName := fmt.Sprintf("/etc/wireguard/%s.conf", c.ifName)
 
 	if prevConf != nil && string(prevConf) == string(conf) {
@@ -92,7 +88,7 @@ func (c *client) updateWg(conf []byte) error {
 	b, err := c.execCmd(fmt.Sprintf("wg-quick down %s", c.ifName), nil)
 	if err != nil {
 		c.logger.Error(err)
-		fmt.Println(string(b))
+		c.logger.Infof(string(b))
 		return err
 	}
 
@@ -101,10 +97,9 @@ func (c *client) updateWg(conf []byte) error {
 	}
 
 	b, err = c.execCmd(fmt.Sprintf("wg-quick up %s", c.ifName), nil)
-
 	if err != nil {
 		c.logger.Error(err)
-		fmt.Println(string(b))
+		c.logger.Infof(string(b))
 		return err
 	}
 
@@ -160,7 +155,7 @@ func (c *client) IsConfigured() bool {
 	return len(dev.Peers) > 0
 }
 
-func NewClient() (Client, error) {
+func NewClient(ifName string) (Client, error) {
 	l, err := logging.New(&logging.Options{})
 	if err != nil {
 		return nil, err
@@ -168,7 +163,7 @@ func NewClient() (Client, error) {
 
 	return &client{
 		logger:  l.WithName("wirec"),
-		ifName:  constants.IfaceName,
+		ifName:  ifName,
 		verbose: false,
 	}, nil
 }

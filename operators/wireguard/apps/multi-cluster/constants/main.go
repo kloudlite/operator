@@ -5,7 +5,7 @@ const (
 	ReconDuration = 15
 	ExpiresIn     = 60
 
-	IfaceName = "kl-wg"
+	// IfaceName = "kl-wg"
 
 	AgentIpRangeMin = 500
 	AgentIpRangeMax = 6000

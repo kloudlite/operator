@@ -9,6 +9,7 @@ type Env struct {
 	ServerAddr string `env:"SERVER_ADDR" required:"true"`
 	KubeDns    string `env:"KUBE_DNS_IP" required:"true"`
 	MyIp       string `env:"MY_IP_ADDRESS" required:"true"`
+	Interface  string `env:"WG_INTERFACE" default:"wg0"`
 }
 
 func GetEnvOrDie() *Env {

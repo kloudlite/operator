@@ -9,7 +9,8 @@ type Env struct {
 	Addr string `env:"ADDR" required:"true"`
 	// example: "./examples/server.yml"
 	ConfigPath string `env:"CONFIG_PATH" required:"true"`
-	Endpoint string `env:"ENDPOINT" required:"true"`
+	Endpoint   string `env:"ENDPOINT" required:"true"`
+	Interface  string `env:"INTERFACE" default:"wg0"`
 }
 
 func GetEnvOrDie() *Env {
