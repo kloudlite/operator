@@ -139,7 +139,6 @@ stringData:
   sysctl: net.ipv4.ip_forward=1
   Corefile: |+
     {{ $corefile | nindent 4 }}
-
 kind: Secret
 metadata:
   name: {{ $name }}-configs

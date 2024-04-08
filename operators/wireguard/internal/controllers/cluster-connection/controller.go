@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -80,6 +81,7 @@ var (
 		{Name: SpecReady, Title: "making sure spec data is ready"},
 		{Name: GWReady, Title: "making sure gateway is ready"},
 		{Name: AgtReady, Title: "making sure agent is ready"},
+		{Name: CorednsConfigUpdate, Title: "updating coredns config"},
 	}
 
 	// CONN_DESTROY_CHECKLIST = []rApi.CheckMeta{
@@ -285,6 +287,7 @@ func (r *Reconciler) reconGateway(req *rApi.Request[*wgv1.ClusterConnection]) st
 		obj.Spec.Id,
 		r.Env.ClusterInternalDns,
 	)
+
 	corefile += fmt.Sprintf("\n\trewrite name regex (^[a-zA-Z0-9-_]+)[.]([a-zA-Z0-9-_]+)[.]cluster%d[.]local {1}.{2}.svc.%s answer auto",
 		obj.Spec.Id,
 		r.Env.ClusterInternalDns,
@@ -345,6 +348,12 @@ func (r *Reconciler) reconGateway(req *rApi.Request[*wgv1.ClusterConnection]) st
 		return check.Failed(err)
 	}
 
+	needsToRollout := false
+	s, err := rApi.Get(ctx, r.Client, fn.NN(ResourceNamespace, fmt.Sprintf("%s-gateway-configs", obj.Name)), &corev1.Secret{})
+	if err == nil && (strings.TrimSpace(string(secBytes)) != strings.TrimSpace(string(s.Data["server-config"]))) {
+		needsToRollout = true
+	}
+
 	gw, err := templates.ParseTemplate(templates.Gateway, map[string]interface{}{
 		"name":      fmt.Sprintf("%s-gateway", obj.Name),
 		"namespace": ResourceNamespace,
@@ -375,8 +384,7 @@ func (r *Reconciler) reconGateway(req *rApi.Request[*wgv1.ClusterConnection]) st
 		return check.Failed(err).Err(nil)
 	}
 
-	s, err := rApi.Get(ctx, r.Client, fn.NN(ResourceNamespace, fmt.Sprintf("%s-gateway-configs", obj.Name)), &corev1.Secret{})
-	if err == nil && !slices.Equal(secBytes, s.Data["server-config"]) {
+	if needsToRollout {
 		if err := fn.RolloutRestart(r.Client, fn.Deployment, ResourceNamespace, map[string]string{
 			constants.WGConnectionNameKey:                 fmt.Sprintf("%s-gateway", obj.Name),
 			"kloudlite.io/wg-cluster-connection.resource": "gateway",
@@ -384,6 +392,7 @@ func (r *Reconciler) reconGateway(req *rApi.Request[*wgv1.ClusterConnection]) st
 			return check.Failed(err)
 		}
 	}
+
 	return check.Completed()
 }
 
@@ -406,6 +415,7 @@ func (r *Reconciler) reconAgent(req *rApi.Request[*wgv1.ClusterConnection]) step
 		"interface": *obj.Spec.Interface,
 		"ownerRefs": []metav1.OwnerReference{fn.AsOwner(obj, true)},
 	})
+
 	if err != nil {
 		return check.Failed(err).Err(nil)
 	}
@@ -418,12 +428,13 @@ func (r *Reconciler) reconAgent(req *rApi.Request[*wgv1.ClusterConnection]) step
 }
 
 func (r *Reconciler) reconCoredns(req *rApi.Request[*wgv1.ClusterConnection]) stepResult.Result {
+	fName := "kldns.server"
 	ctx, _ := req.Context(), req.Object
 	check := rApi.NewRunningCheck(CorednsConfigUpdate, req)
 	current := ``
 	cm, err := rApi.Get(ctx, r.Client, fn.NN("kube-system", "coredns-custom"), &corev1.ConfigMap{})
 	if err == nil {
-		if s, ok := cm.Data["Corefile"]; ok {
+		if s, ok := cm.Data[fName]; ok {
 			current = s
 		}
 	}
@@ -433,11 +444,11 @@ func (r *Reconciler) reconCoredns(req *rApi.Request[*wgv1.ClusterConnection]) st
 		return check.Failed(err)
 	}
 
-	if string(resp) != current {
+	if strings.TrimSpace(string(resp)) != strings.TrimSpace(current) {
 		if cm == nil {
 			cm = &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "coredns-custom", Namespace: "kube-system"}, TypeMeta: metav1.TypeMeta{Kind: "ConfigMap", APIVersion: "v1"}}
 			_, err := controllerutil.CreateOrUpdate(ctx, r.Client, cm, func() error {
-				cm.Data = map[string]string{"Corefile": string(resp)}
+				cm.Data = map[string]string{fName: string(resp)}
 				return nil
 			})
 			if err != nil {
@@ -445,7 +456,7 @@ func (r *Reconciler) reconCoredns(req *rApi.Request[*wgv1.ClusterConnection]) st
 			}
 
 		} else {
-			cm.Data["Corefile"] = string(resp)
+			cm.Data[fName] = string(resp)
 			if err := r.Client.Update(ctx, cm); err != nil {
 				return check.Failed(err)
 			}
