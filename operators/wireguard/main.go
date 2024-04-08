@@ -5,7 +5,7 @@ import (
 	"github.com/kloudlite/operator/operator"
 
 	cc "github.com/kloudlite/operator/operators/wireguard/internal/controllers/cluster-connection"
-	"github.com/kloudlite/operator/operators/wireguard/internal/controllers/device"
+	// "github.com/kloudlite/operator/operators/wireguard/internal/controllers/device"
 	"github.com/kloudlite/operator/operators/wireguard/internal/env"
 )
 
@@ -16,7 +16,7 @@ func main() {
 	mgr.AddToSchemes(wgv1.AddToScheme)
 
 	mgr.RegisterControllers(
-		&device.Reconciler{Name: "Device", Env: ev},
+		// &device.Reconciler{Name: "Device", Env: ev},
 		&cc.Reconciler{Name: "ClusterConnection", Env: ev},
 	)
 
