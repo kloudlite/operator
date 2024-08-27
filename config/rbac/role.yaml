@@ -474,6 +474,32 @@ rules:
   - patch
   - update
 - apiGroups:
+  - meter.kloudlite.io
+  resources:
+  - resourcemeters
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - meter.kloudlite.io
+  resources:
+  - resourcemeters/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - meter.kloudlite.io
+  resources:
+  - resourcemeters/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
   - mongodb.msvc.kloudlite.io
   resources:
   - clusterServices

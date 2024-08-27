@@ -156,6 +156,8 @@ const (
 	NodePoolNameKey string = "kloudlite.io/nodepool.name"
 	NodeNameKey     string = "kloudlite.io/node.name"
 
+	ResourceMeterNameKey string = "kloudlite.io/resource-meter.name"
+
 	IsNodeControllerJob string = "kloudlite.io/is-nodectrl-job"
 	ForceDeleteKey      string = "kloudlite.io/force-delete"
 	RecheckClusterKey   string = "kloudlite.io/recheck-cluster"

@@ -107,4 +107,5 @@ resources:
 - postgres.msvc_v1_standalonedatabase.yaml
 - mysql.msvc_v1_standalonedatabase.yaml
 - mongodb.msvc_v1_standalonedatabase.yaml
+- meter_v1_resourcemeter.yaml
 #+kubebuilder:scaffold:manifestskustomizesamples
