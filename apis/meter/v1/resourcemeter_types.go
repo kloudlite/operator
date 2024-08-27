@@ -11,6 +11,7 @@ type ResourceMeterSpec struct {
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
+// +kubebuilder:resource:scope=Cluster
 
 // ResourceMeter is the Schema for the resourcemeters API
 type ResourceMeter struct {

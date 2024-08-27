@@ -13,7 +13,7 @@ spec:
     listKind: ResourceMeterList
     plural: resourcemeters
     singular: resourcemeter
-  scope: Namespaced
+  scope: Cluster
   versions:
   - name: v1
     schema:
