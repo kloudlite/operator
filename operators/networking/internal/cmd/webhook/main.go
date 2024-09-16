@@ -1,11 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log/slog"
 	"net/http"
 	"os"
@@ -52,6 +54,8 @@ const (
 
 type Env struct {
 	GatewayAdminApiAddr string `env:"GATEWAY_ADMIN_API_ADDR" required:"true"`
+
+	MeterWebhookUrl string `env:"METER_WEBHOOK_URL"`
 }
 
 type Flags struct {
@@ -283,6 +287,24 @@ bash /tmp/script.sh
 				return errResponse(ctx, err, review.Request.UID)
 			}
 
+			if ctx.Env.MeterWebhookUrl != "" {
+				PostRequest(ctx.Env.MeterWebhookUrl, map[string]any{
+					"id":        review.Request.UID,
+					"eventType": "uses",
+					"subject":   "acc1_" + pod.Name,
+					"data": map[string]any{
+						"cpu": func() float64 {
+							sum := 0.0
+							for _, c := range pod.Spec.Containers {
+								sum += c.Resources.Requests.Cpu().AsApproximateFloat64()
+							}
+
+							return sum
+						}(),
+					},
+				})
+			}
+
 			return mutateAndAllow(review, patchBytes)
 		}
 	case admissionv1.Delete:
@@ -417,4 +439,38 @@ func mutateAndAllow(review admissionv1.AdmissionReview, patch []byte) admissionv
 		// Request:  review.Request,
 		Response: &resp,
 	}
+}
+
+// PostRequest makes a POST request with the given data to the specified URL
+func PostRequest(url string, data map[string]interface{}) (string, error) {
+	// Convert data to JSON
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal data: %v", err)
+	}
+
+	// Create a new HTTP request
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return "", fmt.Errorf("failed to create request: %v", err)
+	}
+
+	// Set the content type to JSON
+	req.Header.Set("Content-Type", "application/json")
+
+	// Make the HTTP request
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("request failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	// Read the response body
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to read response body: %v", err)
+	}
+
+	return string(body), nil
 }
