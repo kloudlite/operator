@@ -112,7 +112,6 @@ func (cw *checkWrapper[T]) Completed() step_result.Result {
 		return step_result.New().Err(err)
 	}
 	return step_result.New().Continue(true)
-	// return cw.request.updateStatus().Continue(true)
 }
 
 func NewRunningCheck[T Resource](name string, req *Request[T]) *checkWrapper[T] {

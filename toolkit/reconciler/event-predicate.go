@@ -115,9 +115,9 @@ func ReconcileFilter(eventRecorder ...record.EventRecorder) predicate.Funcs {
 			}
 
 			if oldRes.Status.IsReady == nil || newRes.Status.IsReady == nil {
-				// INFO:  it means this resource is not a kloudlite resource, in that case,
+				// INFO: it means this resource is not a kloudlite resource, in that case,
 				// it should just be always allowed, as it can be a pod or a job, that some kloudlite resource is watching over
-				fireEvent(newObj, ReasonStatusIsReadyChanged, "resource isReady is nil")
+				// fireEvent(newObj, ReasonStatusIsReadyChanged, "resource isReady is nil")
 				return true
 			}
 

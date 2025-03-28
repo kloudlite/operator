@@ -22,6 +22,7 @@ import (
 	// wireguard "github.com/kloudlite/operator/operators/wireguard/controller"
 
 	serviceIntercept "github.com/kloudlite/operator/operators/service-intercept/controller"
+	workspace "github.com/kloudlite/operator/operators/workspace/register"
 	pluginMongoDB "github.com/kloudlite/plugin-mongodb/kloudlite"
 )
 
@@ -52,6 +53,7 @@ func main() {
 	// networkingv0.RegisterInto(mgr) // MIGRATE
 
 	pluginMongoDB.RegisterInto(mgr)
+	workspace.RegisterInto(mgr)
 
 	mgr.Start()
 }
