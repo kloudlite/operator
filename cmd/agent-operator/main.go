@@ -4,7 +4,7 @@ import (
 	"github.com/kloudlite/operator/toolkit/operator"
 
 	app "github.com/kloudlite/operator/operators/app-n-lambda/controller"
-	helmCharts "github.com/kloudlite/operator/operators/helm-charts/controller"
+	// helmCharts "github.com/kloudlite/operator/operators/helm-charts/controller"
 	lifecycle "github.com/kloudlite/operator/operators/lifecycle/controller"
 
 	msvcAndMres "github.com/kloudlite/operator/operators/msvc-n-mres/controller"
@@ -15,6 +15,7 @@ import (
 	// routers "github.com/kloudlite/operator/operators/routers/controller"
 
 	serviceIntercept "github.com/kloudlite/operator/operators/service-intercept/controller"
+	workmachine "github.com/kloudlite/operator/operators/workmachine/register"
 	workspace "github.com/kloudlite/operator/operators/workspace/register"
 	pluginHelmChart "github.com/kloudlite/plugin-helm-chart/kloudlite"
 	pluginMongoDB "github.com/kloudlite/plugin-mongodb/kloudlite"
@@ -26,7 +27,7 @@ func main() {
 	// kloudlite resources
 	app.RegisterInto(mgr)
 	project.RegisterInto(mgr)
-	helmCharts.RegisterInto(mgr)
+	// helmCharts.RegisterInto(mgr)
 	// routers.RegisterInto(mgr)
 
 	// kloudlite managed services
@@ -48,6 +49,7 @@ func main() {
 
 	serviceIntercept.RegisterInto(mgr)
 	workspace.RegisterInto(mgr)
+	workmachine.RegisterInto(mgr)
 
 	pluginMongoDB.RegisterInto(mgr)
 	pluginHelmChart.RegisterInto(mgr)

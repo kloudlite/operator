@@ -21,12 +21,13 @@ require (
 	github.com/goombaio/namegenerator v0.0.0-20181006234301-989e774b106e
 	github.com/influxdata/influxdb-client-go/v2 v2.14.0
 	github.com/kloudlite/operator/toolkit v0.0.0-20250316093242-493e9b587c10
-	github.com/kloudlite/plugin-helm-chart v0.0.0-20241220114210-b6d65e34990d
+	github.com/kloudlite/plugin-helm-chart v0.0.0-20250317052100-fef043b111a2
 	github.com/kloudlite/plugin-mongodb v0.0.0-20250316175205-312ba86d8873
 	github.com/matoous/go-nanoid/v2 v2.1.0
 	github.com/miekg/dns v1.1.62
 	github.com/nats-io/nats.go v1.38.0
 	github.com/nxtcoder17/go-helm-client v0.0.0-20230915000026-8789cfa27bf3
+	github.com/nxtcoder17/go.pkgs v0.0.0-20250401173049-502a28e591dd
 	github.com/onsi/ginkgo/v2 v2.22.0
 	github.com/onsi/gomega v1.36.1
 	github.com/pkg/errors v0.9.1
@@ -84,6 +85,10 @@ require (
 	github.com/muesli/termenv v0.15.2 // indirect
 	github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f // indirect
 	github.com/oapi-codegen/runtime v1.1.1 // indirect
+	github.com/rs/zerolog v1.33.0 // indirect
+	github.com/samber/lo v1.47.0 // indirect
+	github.com/samber/slog-common v0.18.1 // indirect
+	github.com/samber/slog-zerolog/v2 v2.7.3 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasthttp v1.58.0 // indirect
 	github.com/valyala/tcplisten v1.0.0 // indirect

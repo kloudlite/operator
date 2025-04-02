@@ -1,6 +1,8 @@
 package reconciler
 
 import (
+	"fmt"
+	"runtime"
 	"time"
 
 	fn "github.com/kloudlite/operator/toolkit/functions"
@@ -56,6 +58,9 @@ type checkWrapper[T Resource] struct {
 
 func (cw *checkWrapper[T]) Failed(err error) step_result.Result {
 	defer cw.request.LogPostCheck(cw.checkName)
+
+	_, file, line, _ := runtime.Caller(1)
+	cw.request.Logger.Debug("check.failed", "err", err, "caller", fmt.Sprintf("%s:%d", file, line))
 
 	cw.Check.State = ErroredState
 	cw.Check.Status = false

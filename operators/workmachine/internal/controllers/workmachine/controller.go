@@ -1,24 +1,29 @@
-package workspace
+package workmachine
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"strings"
 
 	"k8s.io/client-go/tools/record"
 
+	ct "github.com/kloudlite/operator/apis/common-types"
 	crdsv1 "github.com/kloudlite/operator/apis/crds/v1"
 	"github.com/kloudlite/operator/operators/workmachine/internal/env"
 	"github.com/kloudlite/operator/operators/workmachine/internal/templates"
-	"github.com/kloudlite/operator/pkg/constants"
+	fn "github.com/kloudlite/operator/toolkit/functions"
 	"github.com/kloudlite/operator/toolkit/kubectl"
 	rApi "github.com/kloudlite/operator/toolkit/reconciler"
 	step_result "github.com/kloudlite/operator/toolkit/reconciler/step-result"
-	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/yaml"
 )
 
 type Reconciler struct {
@@ -29,18 +34,20 @@ type Reconciler struct {
 	YAMLClient kubectl.YAMLClient
 	recorder   record.EventRecorder
 
-	workspaceDeploymentTemplate []byte
-	templateWebhook             []byte
+	workmachineLifecycleTemplateSpec []byte
+	templateWebhook                  []byte
 }
 
 func (r *Reconciler) GetName() string {
-	return "workspace"
+	return "workmachine"
 }
 
 const (
-	CreateDeployment     string = "create-deployment"
-	CreateService        string = "create-service"
 	createWorkMachineJob string = "create-work-machine-job"
+)
+
+const (
+	jobRefAnnotation string = "kloudlite.io/workmachine.job-ref"
 )
 
 // +kubebuilder:rbac:groups=crds.kloudlite.io,resources=apps,verbs=get;list;watch;create;update;patch;delete
@@ -56,6 +63,8 @@ func (r *Reconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.
 	req.PreReconcile()
 	defer req.PostReconcile()
 
+	req.Logger.Debug("RECONCILATION starting ...")
+
 	if req.Object.GetDeletionTimestamp() != nil {
 		if x := r.finalize(req); !x.ShouldProceed() {
 			return x.ReconcilerResponse()
@@ -67,7 +76,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.
 		return step.ReconcilerResponse()
 	}
 
-	if step := req.EnsureCheckList([]rApi.CheckMeta{{Name: CreateDeployment}}); !step.ShouldProceed() {
+	if step := req.EnsureCheckList([]rApi.CheckMeta{{Name: createWorkMachineJob}}); !step.ShouldProceed() {
 		return step.ReconcilerResponse()
 	}
 
@@ -79,7 +88,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.
 		return step.ReconcilerResponse()
 	}
 
-	if step := req.EnsureFinalizers(constants.ForegroundFinalizer, constants.CommonFinalizer); !step.ShouldProceed() {
+	if step := req.EnsureFinalizers(rApi.ForegroundFinalizer, rApi.CommonFinalizer); !step.ShouldProceed() {
 		return step.ReconcilerResponse()
 	}
 
@@ -93,12 +102,12 @@ func (r *Reconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.
 
 func (r *Reconciler) finalize(req *rApi.Request[*crdsv1.WorkMachine]) step_result.Result {
 	if step := req.EnsureCheckList([]rApi.CheckMeta{
-		{Name: "uninstall workspace"},
+		{Name: "uninstall workmachine"},
 	}); !step.ShouldProceed() {
 		return step
 	}
 
-	check := rApi.NewRunningCheck("uninstall workspace", req)
+	check := rApi.NewRunningCheck("uninstall workmachine", req)
 
 	if step := req.CleanupOwnedResources(check); !step.ShouldProceed() {
 		return step
@@ -107,9 +116,143 @@ func (r *Reconciler) finalize(req *rApi.Request[*crdsv1.WorkMachine]) step_resul
 	return req.Finalize()
 }
 
+type ClusterParams struct {
+	K3sServerHost string `json:"k3s_server_host"`
+
+	K3sServerToken string `json:"k3s_server_token"`
+	K3sAgentToken  string `json:"k3s_agent_token"`
+
+	K3sVersion string `json:"k3s_version"`
+
+	AwsVPCName string `json:"aws_vpc_name"`
+	AwsVPCId   string `json:"aws_vpc_id"`
+
+	AwsNLBDNSHost string `json:"aws_nlb_dns_host"`
+
+	AwsSecurityGroupIDs       []string `json:"aws_security_group_ids"`
+	AwsIAMInstanceProfileName string   `json:"aws_iam_instance_profile_name"`
+}
+
+func (r *Reconciler) parseSpecIntoTFValues(ctx context.Context, obj *crdsv1.WorkMachine) ([]byte, error) {
+	sp := strings.Split(r.Env.K3sParamsSecretRef, "/")
+	if len(sp) != 2 {
+		return nil, fmt.Errorf("invalid k3s params secret ref must be a valid <secret-namespace>/<secret-name> format")
+	}
+
+	secret, err := rApi.Get(ctx, r.Client, fn.NN(sp[0], sp[1]), &corev1.Secret{})
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Printf("cluster-params.yml: \n---\n%s\n---\n", string(secret.Data["cluster-params.yml"]))
+
+	cp := ClusterParams{}
+	if err := yaml.Unmarshal(secret.Data["cluster-params.yml"], &cp); err != nil {
+		return nil, err
+	}
+
+	fmt.Printf("cluster params: %+v\n", cp)
+
+	switch obj.Spec.GetCloudProvider() {
+	case ct.CloudProviderAWS:
+		{
+			return json.Marshal(map[string]any{
+				"aws_region":      obj.Spec.AWSMachineConfig.Region,
+				"trace_id":        "workmachine-" + obj.Name,
+				"vpc_id":          cp.AwsVPCId,
+				"name":            obj.Name,
+				"k3s_server_host": cp.K3sServerHost,
+				"k3s_agent_token": cp.K3sAgentToken,
+				"k3s_version":     cp.K3sVersion,
+				"ami":             obj.Spec.AWSMachineConfig.AMI,
+				"instance_type":   obj.Spec.AWSMachineConfig.InstanceType,
+				"instance_state": func() string {
+					if obj.Spec.State == crdsv1.WorkMachineStateOn {
+						return "running"
+					}
+
+					return "stopped"
+				}(),
+				"availability_zone": obj.Spec.AWSMachineConfig.AvailabilityZone,
+				// "iam_instance_profile": func() string {
+				// 	if obj.Spec.AWSMachineConfig.IAMInstanceProfileRole != nil {
+				// 		return *obj.Spec.AWSMachineConfig.IAMInstanceProfileRole
+				// 	}
+				// 	return cp.AwsIAMInstanceProfileName
+				// }(),
+				"root_volume_size":   obj.Spec.AWSMachineConfig.RootVolumeSize,
+				"root_volume_type":   obj.Spec.AWSMachineConfig.RootVolumeType,
+				"security_group_ids": cp.AwsSecurityGroupIDs,
+				"subnet_id":          obj.Spec.AWSMachineConfig.PublicSubnetID,
+			})
+		}
+	default:
+		return nil, fmt.Errorf("unsupported cloud provider (%s)", obj.Spec.GetCloudProvider())
+	}
+}
+
 func (r *Reconciler) createWorkMachineCreationJob(req *rApi.Request[*crdsv1.WorkMachine]) step_result.Result {
-	// ctx, obj := req.Context(), req.Object
+	ctx, obj := req.Context(), req.Object
 	check := rApi.NewRunningCheck(createWorkMachineJob, req)
+
+	jobName := fmt.Sprintf("wm-%s", obj.Name)
+
+	if v, ok := obj.Annotations[jobRefAnnotation]; !ok || v != jobName {
+		fn.MapSet(&obj.Annotations, jobRefAnnotation, jobName)
+		if err := r.Update(ctx, obj); err != nil {
+			return check.Failed(err)
+		}
+	}
+
+	varfileJSON, err := r.parseSpecIntoTFValues(ctx, obj)
+	if err != nil {
+		return check.Failed(err)
+	}
+
+	b, err := templates.ParseBytes(r.workmachineLifecycleTemplateSpec, templates.WorkMachineLifecycleVars{
+		JobMetadata: metav1.ObjectMeta{
+			Name:            jobName,
+			Namespace:       r.Env.IACJobsNamespace,
+			Labels:          fn.MapFilterWithPrefix(obj.GetLabels(), "kloudlite.io/"),
+			Annotations:     fn.FilterObservabilityAnnotations(obj.GetAnnotations()),
+			OwnerReferences: []metav1.OwnerReference{fn.AsOwner(obj, true)},
+		},
+		NodeSelector:         obj.Spec.JobParams.NodeSelector,
+		Tolerations:          obj.Spec.JobParams.Tolerations,
+		JobImage:             r.Env.IACJobImage,
+		TFWorkspaceName:      obj.Name,
+		TfWorkspaceNamespace: r.Env.TFStateSecretNamespace,
+		CloudProvider:        obj.Spec.GetCloudProvider().String(),
+		ValuesJSON:           string(varfileJSON),
+
+		OutputSecretName:      obj.Name + "-tf-outputs",
+		OutputSecretNamespace: r.Env.IACJobsNamespace,
+
+		NodeName: obj.Name,
+	})
+	if err != nil {
+		return check.Failed(err)
+	}
+
+	lf := &crdsv1.Lifecycle{ObjectMeta: metav1.ObjectMeta{Name: jobName, Namespace: r.Env.IACJobsNamespace}}
+	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, lf, func() error {
+		lf.SetLabels(fn.MapMerge(fn.MapFilterWithPrefix(obj.GetLabels(), "kloudlite.io/"), lf.GetLabels()))
+		lf.SetAnnotations(fn.MapMerge(fn.MapFilterWithPrefix(obj.GetAnnotations(), "kloudlite.io/observability"), lf.GetAnnotations()))
+		lf.SetOwnerReferences([]metav1.OwnerReference{fn.AsOwner(obj, true)})
+		return yaml.Unmarshal(b, &lf.Spec)
+	}); err != nil {
+		return check.Failed(err)
+	}
+
+	if !lf.HasCompleted() {
+		return check.StillRunning(fmt.Errorf("waiting for lifecycle job to complete"))
+	}
+
+	if lf.Status.Phase == crdsv1.JobPhaseFailed {
+		return check.Failed(fmt.Errorf("lifecycle job failed"))
+	}
+
+	req.AddToOwnedResources(rApi.ParseResourceRef(lf))
 
 	return check.Completed()
 }
@@ -125,15 +268,14 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 	r.recorder = mgr.GetEventRecorderFor(r.GetName())
 
 	var err error
-	r.workspaceDeploymentTemplate, err = templates.Read(templates.WorkspaceTemplate)
+	r.workmachineLifecycleTemplateSpec, err = templates.Read(templates.WorkMachineLifecycleTemplate)
 	if err != nil {
 		return err
 	}
+
 	builder := ctrl.NewControllerManagedBy(mgr).For(&crdsv1.WorkMachine{})
 	builder.WithOptions(controller.Options{MaxConcurrentReconciles: r.Env.MaxConcurrentReconciles})
-	builder.Owns(&appsv1.Deployment{})
-	builder.Owns(&corev1.Service{})
-	builder.Owns(&crdsv1.Router{})
-	builder.WithEventFilter(rApi.ReconcileFilter())
+	builder.Owns(&crdsv1.Lifecycle{})
+	builder.WithEventFilter(rApi.ReconcileFilter(r.recorder))
 	return builder.Complete(r)
 }

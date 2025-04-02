@@ -1,33 +1,25 @@
 package templates
 
 import (
-	crdsv1 "github.com/kloudlite/operator/apis/crds/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type WorkspaceTemplateArgs struct {
-	Metadata           metav1.ObjectMeta
-	NodeName           string
-	ServiceAccountName string
+type WorkMachineLifecycleVars struct {
+	JobMetadata  metav1.ObjectMeta
+	NodeSelector map[string]string
+	Tolerations  []corev1.Toleration
+	JobImage     string
 
-	ImageInitContainer string
-	ImageSSH           string
+	TFWorkspaceName      string
+	TfWorkspaceNamespace string
 
-	EnableTTYD bool
-	ImageTTYD  string
+	CloudProvider string
 
-	EnableJupyterNotebook bool
-	ImageJupyterNotebook  string
+	ValuesJSON string
 
-	EnableCodeServer bool
-	ImageCodeServer  string
+	OutputSecretName      string
+	OutputSecretNamespace string
 
-	EnableVSCodeServer bool
-	ImageVscodeServer  string
-
-	ImagePullPolicy string
-
-	KloudliteDeviceFQDN string
-
-	RouterSpec crdsv1.RouterSpec
+	NodeName string
 }

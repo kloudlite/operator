@@ -1,24 +1,15 @@
 package main
 
 import (
-	wgv1 "github.com/kloudlite/operator/apis/wireguard/v1"
-	"github.com/kloudlite/operator/operator"
-
-	"github.com/kloudlite/operator/operators/wireguard/internal/controllers/device"
-	cc "github.com/kloudlite/operator/operators/wireguard/internal/controllers/global-vpn"
-	"github.com/kloudlite/operator/operators/wireguard/internal/env"
+	crdsv1 "github.com/kloudlite/operator/apis/crds/v1"
+	"github.com/kloudlite/operator/operators/workmachine/register"
+	"github.com/kloudlite/operator/toolkit/operator"
 )
 
 func main() {
-	ev := env.GetEnvOrDie()
+	mgr := operator.New("workmachine")
+	mgr.AddToSchemes(crdsv1.AddToScheme)
 
-	mgr := operator.New("wireguard")
-	mgr.AddToSchemes(wgv1.AddToScheme)
-
-	mgr.RegisterControllers(
-		&device.Reconciler{Name: "Device", Env: ev},
-		&cc.Reconciler{Name: "GlobalVPN", Env: ev},
-	)
-
+	register.RegisterInto(mgr)
 	mgr.Start()
 }

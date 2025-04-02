@@ -6,10 +6,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log/slog"
 	"time"
 
 	"github.com/kloudlite/operator/toolkit/errors"
+	"github.com/nxtcoder17/go.pkgs/log"
 
 	rApi "github.com/kloudlite/operator/toolkit/reconciler"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -45,7 +45,7 @@ type yamlClient struct {
 	k8sClient     *kubernetes.Clientset
 	dynamicClient dynamic.Interface
 	mapper        meta.RESTMapper
-	logger        *slog.Logger
+	logger        log.Logger
 }
 
 func (yc *yamlClient) Client() *kubernetes.Clientset {
@@ -426,7 +426,7 @@ func (yc *yamlClient) RolloutRestart(ctx context.Context, kind Restartable, name
 }
 
 type YAMLClientOpts struct {
-	Logger *slog.Logger
+	Logger log.Logger
 }
 
 func NewYAMLClient(config *rest.Config, opts YAMLClientOpts) (YAMLClient, error) {
@@ -448,7 +448,7 @@ func NewYAMLClient(config *rest.Config, opts YAMLClientOpts) (YAMLClient, error)
 	mapper := restmapper.NewDiscoveryRESTMapper(gr)
 
 	if opts.Logger == nil {
-		opts.Logger = slog.Default()
+		opts.Logger = log.DefaultLogger()
 	}
 
 	return &yamlClient{

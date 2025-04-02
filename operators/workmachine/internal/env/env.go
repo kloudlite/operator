@@ -7,12 +7,12 @@ import (
 type Env struct {
 	MaxConcurrentReconciles int `env:"MAX_CONCURRENT_RECONCILES"`
 
-	WorkspaceImageInitContainer   string `env:"WORKSPACE_IMAGE_INIT_CONTAINER" default:"ghcr.io/kloudlite/iac/workspace:latest"`
-	WorkspaceImageSSH             string `env:"WORKSPACE_IMAGE_SSH" default:"ghcr.io/kloudlite/iac/workspace:latest"`
-	WorkspaceImageTTYD            string `env:"WORKSPACE_IMAGE_TTYD" default:"ghcr.io/kloudlite/iac/ttyd:latest"`
-	WorkspaceImageJupyterNotebook string `env:"WORKSPACE_IMAGE_JUPYTER_NOTEBOOK" default:"ghcr.io/kloudlite/iac/jupyter:latest"`
-	WorkspaceImageCodeServer      string `env:"WORKSPACE_IMAGE_CODE_SERVER" default:"ghcr.io/kloudlite/iac/code-server:latest"`
-	WorkspcaeImageVscodeServer    string `env:"WORKSPCAE_IMAGE_VSCODE_SERVER" default:"ghcr.io/kloudlite/iac/vscode-server:latest"`
+	K3sParamsSecretRef string `env:"K3S_PARAMS_SECRET_REF" required:"true"`
+
+	IACJobsNamespace string `env:"IAC_JOBS_NAMESPACE" required:"true"`
+	IACJobImage      string `env:"IAC_JOB_IMAGE" required:"true"`
+
+	TFStateSecretNamespace string `env:"TF_STATE_SECRET_NAMESPACE" required:"true" default:"kloudlite"`
 }
 
 func GetEnvOrDie() *Env {

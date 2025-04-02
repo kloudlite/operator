@@ -1,7 +1,9 @@
 package v1
 
 import (
+	ct "github.com/kloudlite/operator/apis/common-types"
 	rApi "github.com/kloudlite/operator/toolkit/reconciler"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -9,17 +11,20 @@ type AWSMachineConfig struct {
 	Region           string `json:"region" graphql:"noinput"`
 	AvailabilityZone string `json:"availabilityZone"`
 
-	AMI          string `json:"ami"`
-	InstanceType string `json:"instanceType"`
+	AMI            string `json:"ami"`
+	InstanceType   string `json:"instanceType"`
+	PublicSubnetID string `json:"publicSubnetID"`
 
-	PublicSubnetID  string `json:"publicSubnetId" graphql:"noinput"`
-	SecurityGroupID string `json:"SecurityGroupID" graphql:"noinput"`
+	//+kubebuilder:default=50
+	RootVolumeSize int `json:"rootVolumeSize" graphql:"noinput"`
 
+	//+kubebuilder:default=gp3
 	RootVolumeType string `json:"rootVolumeType" graphql:"noinput"`
-	RootVolumeSize int    `json:"rootVolumeSize" graphql:"noinput"`
 
+	ExternalVolumeSize int `json:"externalVolumeSize"`
+
+	//+kubebuilder:default=gp3
 	ExternalVolumeType string `json:"externalVolumeType" graphql:"noinput"`
-	ExternalVolumeSize string `json:"externalVolumeSize"`
 
 	IAMInstanceProfileRole *string `json:"iamInstanceProfileRole,omitempty" graphql:"noinput"`
 }
@@ -33,13 +38,27 @@ const (
 	WorkMachineStateOff WorkMachineState = "OFF"
 )
 
+type WorkMachineJobParams struct {
+	NodeSelector map[string]string   `json:"nodeSelector,omitempty"`
+	Tolerations  []corev1.Toleration `json:"tolerations,omitempty"`
+}
+
 // WorkMachineSpec defines the desired state of WorkMachine
 type WorkMachineSpec struct {
-	State WorkMachineState `json:"state"`
+	State         WorkMachineState `json:"state"`
+	SSHPublicKeys []string         `json:"sshPublicKeys"`
 
-	SSHPublicKeys []string `json:"sshPublicKeys"`
+	JobParams WorkMachineJobParams `json:"jobParams"`
 
-	AWSMachineConfig `json:"aws"`
+	AWSMachineConfig *AWSMachineConfig `json:"aws"`
+}
+
+func (wms *WorkMachineSpec) GetCloudProvider() ct.CloudProvider {
+	if wms.AWSMachineConfig != nil {
+		return ct.CloudProviderAWS
+	}
+
+	return ct.CloudProviderUnknown
 }
 
 type WorkMachineStatus struct {
@@ -49,6 +68,11 @@ type WorkMachineStatus struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:resource:scope=Cluster
+// +kubebuilder:printcolumn:JSONPath=".status.status.lastReconcileTime",name=Seen,type=date
+// +kubebuilder:printcolumn:JSONPath=".metadata.annotations.kloudlite\\.io\\/operator\\.checks",name=Checks,type=string
+// +kubebuilder:printcolumn:JSONPath=".metadata.annotations.kloudlite\\.io\\/operator\\.resource\\.ready",name=Ready,type=string
+// +kubebuilder:printcolumn:JSONPath=".metadata.creationTimestamp",name=Age,type=date
 
 // WorkMachine is the Schema for the workmachines API
 type WorkMachine struct {
@@ -61,7 +85,7 @@ type WorkMachine struct {
 
 func (r *WorkMachine) EnsureGVK() {
 	if r != nil {
-		r.SetGroupVersionKind(GroupVersion.WithKind("Workspace"))
+		r.SetGroupVersionKind(GroupVersion.WithKind("WorkMachine"))
 	}
 }
 
