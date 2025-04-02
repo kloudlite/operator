@@ -363,6 +363,12 @@ spec:
                     type: string
                   maxBodySizeInMB:
                     type: integer
+                  nginxIngressAnnotations:
+                    additionalProperties:
+                      type: string
+                    description: NginxIngressAnnotations is additional list of annotations
+                      on ingress resource
+                    type: object
                   rateLimit:
                     properties:
                       connections:

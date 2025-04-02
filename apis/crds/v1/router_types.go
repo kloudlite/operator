@@ -55,9 +55,16 @@ type RouterSpec struct {
 	RateLimit       *RateLimit `json:"rateLimit,omitempty"`
 	MaxBodySizeInMB *int       `json:"maxBodySizeInMB,omitempty"`
 	Domains         []string   `json:"domains"`
-	Routes          []Route    `json:"routes,omitempty"`
-	BasicAuth       *BasicAuth `json:"basicAuth,omitempty"`
-	Cors            *Cors      `json:"cors,omitempty"`
+
+	// Routes is a map of [domain name] to the corresponding []Route
+	// Routes map[string][]Route `json:"routes"`
+
+	Routes    []Route    `json:"routes,omitempty"`
+	BasicAuth *BasicAuth `json:"basicAuth,omitempty"`
+	Cors      *Cors      `json:"cors,omitempty"`
+
+	// NginxIngressAnnotations is additional list of annotations on ingress resource
+	NginxIngressAnnotations map[string]string `json:"nginxIngressAnnotations,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -98,6 +105,7 @@ func (r *Router) GetEnsuredLabels() map[string]string {
 
 func (m *Router) GetEnsuredAnnotations() map[string]string {
 	return map[string]string{
+		// "kloudlite.io/router.domains":       strings.Join(fn.MapKeys(m.Spec.Routes), ","),
 		"kloudlite.io/router.domains":       strings.Join(m.Spec.Domains, ","),
 		"kloudlite.io/router.ingress-class": m.Spec.IngressClass,
 	}

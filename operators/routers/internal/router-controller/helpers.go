@@ -41,6 +41,7 @@ func (r *Reconciler) parseAndExtractDomains(req *reconciler.Request[*crdsv1.Rout
 		}
 	}
 
+	// wildcardDomains, nonWildcardDomains := FilterDomains(wildcardPatterns, fn.MapKeys(obj.Spec.Routes))
 	wildcardDomains, nonWildcardDomains := FilterDomains(wildcardPatterns, obj.Spec.Domains)
 	return wildcardDomains, nonWildcardDomains, nil
 }

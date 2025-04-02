@@ -61,18 +61,6 @@ const (
 	certCreatedByRouter string = "kloudlite.io/cert-created-by-router"
 )
 
-var (
-	ApplyChecklist = []reconciler.CheckMeta{
-		{Name: DefaultsPatched, Title: "Defaults Patched"},
-		{Name: EnsuringHttpsCertsIfEnabled, Title: "Ensuring HTTPS Cert if enabled"},
-		{Name: SettingUpBasicAuthIfEnabled, Title: "Setting Up Basic Auth if enabled"},
-	}
-
-	DeleteChecklist = []reconciler.CheckMeta{
-		{Name: CleaningUpResources, Title: "Cleaning Up Resources"},
-	}
-)
-
 // +kubebuilder:rbac:groups=crds.kloudlite.io,resources=crds,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=crds.kloudlite.io,resources=crds/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=crds.kloudlite.io,resources=crds/finalizers,verbs=update
@@ -101,7 +89,11 @@ func (r *Reconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.
 		return step.ReconcilerResponse()
 	}
 
-	if step := req.EnsureCheckList(ApplyChecklist); !step.ShouldProceed() {
+	if step := req.EnsureCheckList([]reconciler.CheckMeta{
+		{Name: DefaultsPatched, Title: "Defaults Patched"},
+		{Name: EnsuringHttpsCertsIfEnabled, Title: "Ensuring HTTPS Cert if enabled"},
+		{Name: SettingUpBasicAuthIfEnabled, Title: "Setting Up Basic Auth if enabled"},
+	}); !step.ShouldProceed() {
 		return step.ReconcilerResponse()
 	}
 
@@ -329,44 +321,60 @@ func (r *Reconciler) ensureIngresses(req *reconciler.Request[*crdsv1.Router]) st
 
 	nginxIngressAnnotations := GenNginxIngressAnnotations(obj)
 
-	if len(obj.Spec.Routes) > 0 {
-		b, err := templates.ParseBytes(
-			r.templateIngress, map[string]any{
-				"name":      obj.Name,
-				"namespace": obj.Namespace,
-
-				"owner-refs":  []metav1.OwnerReference{fn.AsOwner(obj, true)},
-				"labels":      obj.GetLabels(),
-				"annotations": nginxIngressAnnotations,
-
-				"non-wildcard-domains": nonWcDomains,
-				"wildcard-domains":     wcDomains,
-				"router-domains":       obj.Spec.Domains,
-
-				"ingress-class": obj.Spec.IngressClass,
-				"cluster-issuer": func() string {
-					if obj.Spec.Https != nil && obj.Spec.Https.ClusterIssuer != "" {
-						return obj.Spec.Https.ClusterIssuer
-					}
-					return r.Env.DefaultClusterIssuer
-				}(),
-
-				"routes": obj.Spec.Routes,
-
-				"is-https-enabled": isHttpsEnabled(obj),
-			},
-		)
-		if err != nil {
-			return check.Failed(err).Err(nil)
-		}
-
-		rr, err := r.YAMLClient.ApplyYAML(ctx, b)
-		if err != nil {
-			return check.StillRunning(err)
-		}
-
-		req.AddToOwnedResources(rr...)
+	if len(obj.Spec.Routes) == 0 {
+		return check.Completed()
 	}
+
+	// b, err := templates.ParseBytes(r.templateIngress, templates.IngressTemplateArgs{
+	// 	Metadata: metav1.ObjectMeta{
+	// 		Name:        obj.Name,
+	// 		Namespace:   obj.Namespace,
+	// 		Labels:      obj.GetLabels(),
+	// 		Annotations: nginxIngressAnnotations,
+	// 	},
+	// 	IngressClassName:   obj.Spec.IngressClass,
+	// 	HttpsEnabled:       isHttpsEnabled(obj),
+	// 	WildcardDomains:    wcDomains,
+	// 	NonWildcardDomains: nonWcDomains,
+	// 	Routes:             obj.Spec.Routes,
+	// })
+
+	b, err := templates.ParseBytes(
+		r.templateIngress, map[string]any{
+			"name":      obj.Name,
+			"namespace": obj.Namespace,
+
+			"owner-refs":  []metav1.OwnerReference{fn.AsOwner(obj, true)},
+			"labels":      obj.GetLabels(),
+			"annotations": nginxIngressAnnotations,
+
+			"non-wildcard-domains": nonWcDomains,
+			"wildcard-domains":     wcDomains,
+			"router-domains":       obj.Spec.Routes,
+
+			"ingress-class": obj.Spec.IngressClass,
+			"cluster-issuer": func() string {
+				if obj.Spec.Https != nil && obj.Spec.Https.ClusterIssuer != "" {
+					return obj.Spec.Https.ClusterIssuer
+				}
+				return r.Env.DefaultClusterIssuer
+			}(),
+
+			"routes": obj.Spec.Routes,
+
+			"is-https-enabled": isHttpsEnabled(obj),
+		},
+	)
+	if err != nil {
+		return check.Failed(err).Err(nil)
+	}
+
+	rr, err := r.YAMLClient.ApplyYAML(ctx, b)
+	if err != nil {
+		return check.StillRunning(err)
+	}
+
+	req.AddToOwnedResources(rr...)
 
 	return check.Completed()
 }
@@ -380,7 +388,7 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 
 	var err error
-	r.templateIngress, err = templates.ReadIngressTemplate()
+	r.templateIngress, err = templates.Read(templates.IngressTemplate)
 	if err != nil {
 		return err
 	}
