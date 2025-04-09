@@ -34,6 +34,7 @@ type Reconciler struct {
 	recorder   record.EventRecorder
 
 	workspaceDeploymentTemplate []byte
+	jumpServerTemplate          []byte
 	templateWebhook             []byte
 }
 
@@ -150,7 +151,8 @@ func (r *Reconciler) createDeployment(req *rApi.Request[*crdsv1.Workspace]) step
 
 		ImagePullPolicy:     obj.Spec.ImagePullPolicy,
 		KloudliteDeviceFQDN: fmt.Sprintf("%s.%s.svc.cluster.local", obj.Name, obj.Namespace),
-		RouterSpec:          obj.Spec.Router,
+
+		RouterSpec: obj.Spec.Router,
 	})
 	if err != nil {
 		return check.Failed(err)
@@ -197,6 +199,7 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 	if err != nil {
 		return err
 	}
+
 	builder := ctrl.NewControllerManagedBy(mgr).For(&crdsv1.Workspace{})
 	builder.WithOptions(controller.Options{MaxConcurrentReconciles: r.Env.MaxConcurrentReconciles})
 	builder.Owns(&appsv1.Deployment{})

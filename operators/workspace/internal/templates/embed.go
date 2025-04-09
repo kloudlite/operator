@@ -13,7 +13,7 @@ var templatesDir embed.FS
 type templateFile string
 
 const (
-	WorkspaceTemplate templateFile =  "./workspace.yml.tpl"
+	WorkspaceTemplate  templateFile = "./workspace.yml.tpl"
 )
 
 func Read(t templateFile) ([]byte, error) {

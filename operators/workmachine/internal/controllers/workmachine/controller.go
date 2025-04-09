@@ -12,10 +12,12 @@ import (
 	crdsv1 "github.com/kloudlite/operator/apis/crds/v1"
 	"github.com/kloudlite/operator/operators/workmachine/internal/env"
 	"github.com/kloudlite/operator/operators/workmachine/internal/templates"
+	"github.com/kloudlite/operator/pkg/constants"
 	fn "github.com/kloudlite/operator/toolkit/functions"
 	"github.com/kloudlite/operator/toolkit/kubectl"
 	rApi "github.com/kloudlite/operator/toolkit/reconciler"
 	step_result "github.com/kloudlite/operator/toolkit/reconciler/step-result"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -36,6 +38,7 @@ type Reconciler struct {
 
 	workmachineLifecycleTemplateSpec []byte
 	templateWebhook                  []byte
+	templateJumpServerDeploymentSpec []byte
 }
 
 func (r *Reconciler) GetName() string {
@@ -43,7 +46,15 @@ func (r *Reconciler) GetName() string {
 }
 
 const (
-	createWorkMachineJob string = "create-work-machine-job"
+	createWorkMachineJob          string = "create-work-machine-job"
+	createTargetNamespace         string = "create-target-namespace"
+	createSSHPublicKeysSecret     string = "create-ssh-public-keys-secret"
+	createSSHJumpServerDeployment string = "create-ssh-jumpserver-deployment"
+)
+
+const (
+	sshPublicKeysSecretName string = "ssh-public-keys"
+	authorizedKeysSecretKey string = "authorized_keys"
 )
 
 const (
@@ -76,11 +87,11 @@ func (r *Reconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.
 		return step.ReconcilerResponse()
 	}
 
-	if step := req.EnsureCheckList([]rApi.CheckMeta{{Name: createWorkMachineJob}}); !step.ShouldProceed() {
-		return step.ReconcilerResponse()
-	}
-
-	if step := req.RestartIfAnnotated(); !step.ShouldProceed() {
+	if step := req.EnsureCheckList([]rApi.CheckMeta{
+		{Name: createWorkMachineJob, Title: "Creates WorkMachine creation job"},
+		{Name: createTargetNamespace, Title: "Creates a target namespace for workmachine"},
+		{Name: createSSHPublicKeysSecret, Title: "store SSH public keys in a secret"},
+	}); !step.ShouldProceed() {
 		return step.ReconcilerResponse()
 	}
 
@@ -93,6 +104,18 @@ func (r *Reconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.
 	}
 
 	if step := r.createWorkMachineCreationJob(req); !step.ShouldProceed() {
+		return step.ReconcilerResponse()
+	}
+
+	if step := r.createTargetNamespace(req); !step.ShouldProceed() {
+		return step.ReconcilerResponse()
+	}
+
+	if step := r.createSSHPublicKeysSecret(req); !step.ShouldProceed() {
+		return step.ReconcilerResponse()
+	}
+
+	if step := r.createSSHJumpServer(req); !step.ShouldProceed() {
 		return step.ReconcilerResponse()
 	}
 
@@ -257,6 +280,88 @@ func (r *Reconciler) createWorkMachineCreationJob(req *rApi.Request[*crdsv1.Work
 	return check.Completed()
 }
 
+func (r *Reconciler) createTargetNamespace(req *rApi.Request[*crdsv1.WorkMachine]) step_result.Result {
+	ctx, obj := req.Context(), req.Object
+	check := rApi.NewRunningCheck(createTargetNamespace, req)
+
+	hasUpdate := false
+	if obj.Spec.TargetNamespace == "" {
+		hasUpdate = true
+		obj.Spec.TargetNamespace = "wm-" + obj.Name
+	}
+
+	if hasUpdate {
+		if err := r.Update(ctx, obj); err != nil {
+			return check.Failed(err)
+		}
+
+		return check.StillRunning(fmt.Errorf("waiting for reconcilation"))
+	}
+
+	ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: obj.Spec.TargetNamespace}}
+	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, ns, func() error {
+		fn.MapSet(&ns.Annotations, "kloudlite.io/namespace.for", fmt.Sprintf("workmachine/%s", obj.Name))
+		ns.SetOwnerReferences([]metav1.OwnerReference{fn.AsOwner(obj, true)})
+		return nil
+	}); err != nil {
+		return check.Failed(err)
+	}
+
+	return check.Completed()
+}
+
+func (r *Reconciler) createSSHPublicKeysSecret(req *rApi.Request[*crdsv1.WorkMachine]) step_result.Result {
+	ctx, obj := req.Context(), req.Object
+	check := rApi.NewRunningCheck(createSSHPublicKeysSecret, req)
+
+	secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: sshPublicKeysSecretName, Namespace: obj.Spec.TargetNamespace}}
+	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, secret, func() error {
+		fn.MapSet(&secret.Annotations, "kloudlite.io/description", "this secret contains ssh public keys given by user in workmachine resource")
+		fn.MapSet(&secret.Annotations, "kloudlite.io/secret.for", fmt.Sprintf("workmachine/%s", obj.Name))
+		secret.SetOwnerReferences([]metav1.OwnerReference{fn.AsOwner(obj, true)})
+
+		if secret.StringData == nil {
+			secret.StringData = make(map[string]string, 1)
+		}
+
+		secret.StringData[authorizedKeysSecretKey] = strings.Join(obj.Spec.SSHPublicKeys, "\n")
+		return nil
+	}); err != nil {
+		return check.Failed(err)
+	}
+
+	return check.Completed()
+}
+
+func (r *Reconciler) createSSHJumpServer(req *rApi.Request[*crdsv1.WorkMachine]) step_result.Result {
+	ctx, obj := req.Context(), req.Object
+	check := rApi.NewRunningCheck(createSSHJumpServerDeployment, req)
+
+	sshJumpServerName := "ssh-jump-server"
+
+	b, err := templates.ParseBytes(r.templateJumpServerDeploymentSpec, templates.JumpServerDeploymentSpecTemplateArgs{
+		SSHAuthorizedKeysSecretName: sshPublicKeysSecretName,
+		SSHAuthorizedKeysSecretKey:  authorizedKeysSecretKey,
+		SelectorLabels: map[string]string{
+			"app": "jump-server",
+		},
+	})
+	if err != nil {
+		return check.Failed(err)
+	}
+
+	deployment := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: sshJumpServerName, Namespace: obj.Namespace}}
+	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, deployment, func() error {
+		deployment.SetOwnerReferences([]metav1.OwnerReference{fn.AsOwner(obj, true)})
+		fn.MapSet(&deployment.Annotations, constants.DescriptionKey, "this deployment is a ssh jump server used to allow users to jump to different workspaces")
+		return yaml.Unmarshal(b, &deployment.Spec)
+	}); err != nil {
+		return check.Failed(err)
+	}
+
+	return check.Completed()
+}
+
 func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 	r.Client = mgr.GetClient()
 	r.Scheme = mgr.GetScheme()
@@ -269,6 +374,11 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	var err error
 	r.workmachineLifecycleTemplateSpec, err = templates.Read(templates.WorkMachineLifecycleTemplate)
+	if err != nil {
+		return err
+	}
+
+	r.templateJumpServerDeploymentSpec, err = templates.Read(templates.JumpServerDeploymentSpec)
 	if err != nil {
 		return err
 	}

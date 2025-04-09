@@ -17,6 +17,9 @@ const (
 
 // WorkspaceSpec defines the desired state of Workspace
 type WorkspaceSpec struct {
+	// Name of work machine
+	WorkMachine string `json:"workMachine"`
+
 	State              WorkspaceState `json:"state"`
 	NodeName           string         `json:"nodeName"`
 	ServiceAccountName string         `json:"serviceAccountName"`

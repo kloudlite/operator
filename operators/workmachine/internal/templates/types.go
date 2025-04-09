@@ -23,3 +23,9 @@ type WorkMachineLifecycleVars struct {
 
 	NodeName string
 }
+
+type JumpServerDeploymentSpecTemplateArgs struct {
+	SSHAuthorizedKeysSecretName string
+	SSHAuthorizedKeysSecretKey  string
+	SelectorLabels              map[string]string
+}

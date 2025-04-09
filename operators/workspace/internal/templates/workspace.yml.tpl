@@ -222,8 +222,10 @@ spec:
       port: "8080"
       targetPort: "8080"
 ---
+
 apiVersion: crds.kloudlite.io/v1
 kind: Router
 metadata: {{.Metadata | toJson }}
 spec: {{.RouterSpec | toJson }}
+---
 {{- end }}

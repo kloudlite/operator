@@ -15,6 +15,7 @@ type templateFile string
 const (
 	WorkspaceTemplate            templateFile = "./workspace.yml.tpl"
 	WorkMachineLifecycleTemplate templateFile = "./workmachine-lifecycle.yml.tpl"
+	JumpServerDeploymentSpec     templateFile = "./ssh-jumpserver-deployment-spec.yml.tpl"
 )
 
 func Read(t templateFile) ([]byte, error) {

@@ -50,6 +50,8 @@ type WorkMachineSpec struct {
 
 	JobParams WorkMachineJobParams `json:"jobParams"`
 
+	TargetNamespace string `json:"targetNamespace,omitempty"`
+
 	AWSMachineConfig *AWSMachineConfig `json:"aws"`
 }
 
@@ -69,6 +71,7 @@ type WorkMachineStatus struct {
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:scope=Cluster
+// +kubebuilder:printcolumn:JSONPath=".spec.targetNamespace",name=TargetNamespace,type=string
 // +kubebuilder:printcolumn:JSONPath=".status.status.lastReconcileTime",name=Seen,type=date
 // +kubebuilder:printcolumn:JSONPath=".metadata.annotations.kloudlite\\.io\\/operator\\.checks",name=Checks,type=string
 // +kubebuilder:printcolumn:JSONPath=".metadata.annotations.kloudlite\\.io\\/operator\\.resource\\.ready",name=Ready,type=string

@@ -15,6 +15,9 @@ spec:
   scope: Cluster
   versions:
   - additionalPrinterColumns:
+    - jsonPath: .spec.targetNamespace
+      name: TargetNamespace
+      type: string
     - jsonPath: .status.status.lastReconcileTime
       name: Seen
       type: date
@@ -141,6 +144,8 @@ spec:
                 enum:
                 - "ON"
                 - "OFF"
+                type: string
+              targetNamespace:
                 type: string
             required:
             - aws
