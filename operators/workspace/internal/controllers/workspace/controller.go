@@ -18,11 +18,9 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/util/intstr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 type Reconciler struct {
@@ -44,7 +42,7 @@ func (r *Reconciler) GetName() string {
 
 const (
 	CreateDeployment string = "create-deployment"
-	CreateService    string = "create-service"
+	// CreateService    string = "create-service"
 )
 
 // +kubebuilder:rbac:groups=crds.kloudlite.io,resources=apps,verbs=get;list;watch;create;update;patch;delete
@@ -87,9 +85,9 @@ func (r *Reconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.
 		return step.ReconcilerResponse()
 	}
 
-	if step := r.createInterceptableService(req); !step.ShouldProceed() {
-		return step.ReconcilerResponse()
-	}
+	// if step := r.createInterceptableService(req); !step.ShouldProceed() {
+	// 	return step.ReconcilerResponse()
+	// }
 
 	if step := r.createDeployment(req); !step.ShouldProceed() {
 		return step.ReconcilerResponse()
@@ -99,28 +97,28 @@ func (r *Reconciler) Reconcile(ctx context.Context, request ctrl.Request) (ctrl.
 	return ctrl.Result{}, nil
 }
 
-func (r *Reconciler) createInterceptableService(req *rApi.Request[*crdsv1.Workspace]) stepResult.Result {
-	ctx, obj := req.Context(), req.Object
-	check := rApi.NewRunningCheck(CreateService, req)
+// func (r *Reconciler) createInterceptableService(req *rApi.Request[*crdsv1.Workspace]) stepResult.Result {
+// 	ctx, obj := req.Context(), req.Object
+// 	check := rApi.NewRunningCheck(CreateService, req)
 
-	svc := &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: obj.Name, Namespace: obj.Namespace}}
-	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, svc, func() error {
-		svc.Spec.Ports = []corev1.ServicePort{
-			{
-				Name:       fmt.Sprintf("port-%d", 3000),
-				Protocol:   "TCP",
-				Port:       3000,
-				TargetPort: intstr.FromInt(3000),
-			},
-		}
-		return nil
-	}); err != nil {
-		return check.Failed(err)
-	}
+// 	svc := &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: obj.Name, Namespace: obj.Namespace}}
+// 	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, svc, func() error {
+// 		svc.Spec.Ports = []corev1.ServicePort{
+// 			{
+// 				Name:       fmt.Sprintf("port-%d", 3000),
+// 				Protocol:   "TCP",
+// 				Port:       3000,
+// 				TargetPort: intstr.FromInt(3000),
+// 			},
+// 		}
+// 		return nil
+// 	}); err != nil {
+// 		return check.Failed(err)
+// 	}
 
-	// function-body
-	return check.Completed()
-}
+// 	// function-body
+// 	return check.Completed()
+// }
 
 func (r *Reconciler) createDeployment(req *rApi.Request[*crdsv1.Workspace]) stepResult.Result {
 	ctx, obj := req.Context(), req.Object
@@ -132,7 +130,7 @@ func (r *Reconciler) createDeployment(req *rApi.Request[*crdsv1.Workspace]) step
 			Namespace:       obj.Namespace,
 			OwnerReferences: []metav1.OwnerReference{fn.AsOwner(obj, true)},
 		},
-
+		KloudliteDomain:    "test.khost.dev",
 		WorkMachineName:    obj.Spec.WorkMachine,
 		ServiceAccountName: obj.Spec.ServiceAccountName,
 		ImageInitContainer: r.Env.WorkspaceImageInitContainer,
@@ -153,11 +151,20 @@ func (r *Reconciler) createDeployment(req *rApi.Request[*crdsv1.Workspace]) step
 		ImagePullPolicy:     obj.Spec.ImagePullPolicy,
 		KloudliteDeviceFQDN: fmt.Sprintf("%s.%s.svc.cluster.local", obj.Name, obj.Namespace),
 
+		PortConfig: templates.PortConfig{
+			SSHPort:        22,
+			TTYDPort:       56789,
+			NotebookPort:   56790,
+			CodeServerPort: 56791,
+		},
+
 		RouterSpec: obj.Spec.Router,
 	})
 	if err != nil {
 		return check.Failed(err)
 	}
+
+	fmt.Println(string(b))
 
 	rr, err := r.YAMLClient.ApplyYAML(ctx, b)
 	if err != nil {
@@ -196,7 +203,7 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 	r.recorder = mgr.GetEventRecorderFor(r.GetName())
 
 	var err error
-	r.workspaceDeploymentTemplate, err = templates.Read(templates.WorkspaceTemplate)
+	r.workspaceDeploymentTemplate, err = templates.Read(templates.WorkspaceIngressTemplate, templates.WorkspaceSTSTemplate, templates.WorkspaceServiceTemplate)
 	if err != nil {
 		return err
 	}

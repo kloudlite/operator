@@ -1,3 +1,4 @@
+---
 {{- with . }}
 apiVersion: apps/v1
 kind: StatefulSet
@@ -17,7 +18,9 @@ spec:
         fsGroup: 1000
       hostname: {{.Metadata.Name}}
       nodeName: {{.WorkMachineName}}
+      # {{- if and .ServiceAccountName (ne .ServiceAccountName "") }}
       # serviceAccount: {{.ServiceAccountName | squote}}
+      # {{- end }}
       tolerations:
         - key: "kloudlite.io/workmachine.name"
           operator: "Equal"
@@ -59,6 +62,22 @@ spec:
               echo "authorized_keys file not found, copying new one"
               cp /tmp/authorized_keys /home/kl/.ssh/authorized_keys
             fi
+            
+            if [ -f "/home/kl/.ssh/id_rsa" ]; then
+              if ! cmp -s /tmp/id_rsa /home/kl/.ssh/id_rsa; then
+                echo "id_rsa file differs, copying new one"
+                rm /home/kl/.ssh/id_rsa* || true
+                cp /tmp/id_rsa /home/kl/.ssh/id_rsa
+                cp /tmp/id_rsa.pub /home/kl/.ssh/id_rsa.pub
+              fi
+              echo "id_rsa file is up to date"
+            else
+              echo "id_rsa file not found, copying new one"
+              rm /home/kl/.ssh/id_rsa* || true
+              cp /tmp/id_rsa /home/kl/.ssh/id_rsa
+              cp /tmp/id_rsa.pub /home/kl/.ssh/id_rsa.pub
+            fi
+            
             if [ ! -d "/nix/store" ]; then
               curl -L https://nixos.org/nix/install | sh
               mkdir -p ~/.config/nix
@@ -129,6 +148,14 @@ spec:
             - mountPath: /tmp/authorized_keys
               name: ssh-keys
               subPath: authorized_keys
+            
+            - mountPath: /tmp/id_rsa.pub
+              name: ssh-keys
+              subPath: id_rsa.pub
+            
+            - mountPath: /tmp/id_rsa
+              name: ssh-keys
+              subPath: id_rsa
 
             - mountPath: /nix
               name: nix-dir
@@ -160,49 +187,49 @@ spec:
           volumeMounts: *volume-mounts
 
       {{ if .EnableTTYD }}
-      - name: ttyd
-        image: {{.ImageTTYD}}
-        imagePullPolicy: {{.ImagePullPolicy}}
-        env: *env
-        ports:
-        - containerPort: 54535
-        volumeMounts: *volume-mounts
+        - name: ttyd
+          image: {{.ImageTTYD}}
+          imagePullPolicy: {{.ImagePullPolicy}}
+          env: *env
+          ports:
+          - containerPort: 54535
+          volumeMounts: *volume-mounts
       {{ end }}
 
       {{ if .EnableJupyterNotebook }}
-      - name: jupyter
-        image: {{.ImageJupyterNotebook}}
-        imagePullPolicy: {{.ImagePullPolicy}}
-        env: *env
-        ports:
-        - containerPort: 8888
-        volumeMounts: *volume-mounts
-        securityContext:
-          runAsUser: 1000
-          runAsGroup: 1000
+        - name: jupyter
+          image: {{.ImageJupyterNotebook}}
+          imagePullPolicy: {{.ImagePullPolicy}}
+          env: *env
+          ports:
+          - containerPort: 8888
+          volumeMounts: *volume-mounts
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
       {{ end }}
 
       {{ if .EnableCodeServer }}
-      - name: code-server
-        image: {{.ImageCodeServer}}
-        imagePullPolicy: {{.ImagePullPolicy}}
-        env: *env
-        volumeMounts: *volume-mounts
-        securityContext:
-          runAsUser: 1000
-          runAsGroup: 1000
+        - name: code-server
+          image: {{.ImageCodeServer}}
+          imagePullPolicy: {{.ImagePullPolicy}}
+          env: *env
+          volumeMounts: *volume-mounts
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
       {{ end }}
 
       {{ if .EnableVSCodeServer }}
-      - name: vscode-server
-        {{- /* image: ghcr.io/kloudlite/iac/vscode-server:latest */}}
-        image: {{.ImageVscodeServer}}
-        imagePullPolicy: {{.ImagePullPolicy}}
-        env: *env
-        volumeMounts: *volume-mounts
-        securityContext:
-          runAsUser: 1000
-          runAsGroup: 1000
+        - name: vscode-server
+          {{- /* image: ghcr.io/kloudlite/iac/vscode-server:latest */}}
+          image: {{.ImageVscodeServer}}
+          imagePullPolicy: {{.ImagePullPolicy}}
+          env: *env
+          volumeMounts: *volume-mounts
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
       {{ end }}
 
       volumes:
@@ -224,36 +251,9 @@ spec:
           items:
           - key: authorized_keys
             path: authorized_keys
----
-apiVersion: v1
-kind: Service
-metadata: {{.Metadata | toJson }}
-spec:
-  ports:
-    - name: "ssh"
-      protocol: "TCP"
-      port: 22
-      targetPort: 22
+          - key: id_rsa.pub
+            path: id_rsa.pub
+          - key: id_rsa
+            path: id_rsa
 
-    - name: "ttyd-server"
-      protocol: "TCP"
-      port: 54535
-      targetPort: 54535
-
-    - name: "jupyter-server"
-      protocol: "TCP"
-      port: 8888
-      targetPort: 8888
-
-    - name: "code-server"
-      protocol: "TCP"
-      port: 8080
-      targetPort: 8080
----
-
-apiVersion: crds.kloudlite.io/v1
-kind: Router
-metadata: {{.Metadata | toJson }}
-spec: {{.RouterSpec | toJson }}
----
 {{- end }}
