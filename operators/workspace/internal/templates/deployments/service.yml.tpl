@@ -4,6 +4,8 @@ apiVersion: v1
 kind: Service
 metadata: {{.Metadata | toJson }}
 spec:
+  selector:
+    app: {{.Metadata.Name | squote}}
   ports:
     - name: "ssh"
       protocol: "TCP"
@@ -32,3 +34,15 @@ spec:
 {{ end }}
 
 {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{.Metadata.Name}}-headless
+  namespace: {{.Metadata.Namespace}}
+  labels: {{.Metadata.Labels | toJson }}
+  annotations: {{.Metadata.Annotations | toJson }}
+spec:
+  clusterIP: None
+  selector:
+    app: {{.Metadata.Name | squote}}
