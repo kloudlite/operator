@@ -7,7 +7,8 @@ import (
 
 type WorkspaceTemplateArgs struct {
 	Metadata           metav1.ObjectMeta
-	NodeName           string
+	WorkMachineName    string
+	IsOn               bool
 	ServiceAccountName string
 
 	ImageInitContainer string

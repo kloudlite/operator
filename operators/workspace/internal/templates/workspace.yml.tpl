@@ -1,8 +1,9 @@
 {{- with . }}
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata: {{.Metadata | toJson }}
 spec:
+  replicas: {{ if .IsOn }}1{{ else }}0{{ end }}
   selector:
     matchLabels:
       app: {{.Metadata.Name | squote}}
@@ -12,13 +13,15 @@ spec:
         app: {{.Metadata.Name | squote}}
         kloudlite.io/gateway.enabled: "false"
     spec:
+      securityContext:
+        fsGroup: 1000
       hostname: {{.Metadata.Name}}
-      nodeName: {{.NodeName}}
-      serviceAccount: {{.ServiceAccountName | squote}}
+      nodeName: {{.WorkMachineName}}
+      # serviceAccount: {{.ServiceAccountName | squote}}
       tolerations:
-        - key: "kloudlite.io/worknode"
+        - key: "kloudlite.io/workmachine.name"
           operator: "Equal"
-          value: {{.NodeName |squote}}
+          value: {{.WorkMachineName |squote}}
           effect: "NoExecute"
       initContainers:
         - name: init-home-dir
@@ -43,12 +46,24 @@ spec:
           - |
             set -e
             set +x
+            if [ ! -d "/home/kl/.ssh" ]; then
+              mkdir -p /home/kl/.ssh
+            fi
+            if [ -f "/home/kl/.ssh/authorized_keys" ]; then
+              if ! cmp -s /tmp/authorized_keys /home/kl/.ssh/authorized_keys; then
+                echo "authorized_keys file differs, copying new one"
+                cp /tmp/authorized_keys /home/kl/.ssh/authorized_keys
+              fi
+              echo "authorized_keys file is up to date"
+            else
+              echo "authorized_keys file not found, copying new one"
+              cp /tmp/authorized_keys /home/kl/.ssh/authorized_keys
+            fi
             if [ ! -d "/nix/store" ]; then
               curl -L https://nixos.org/nix/install | sh
               mkdir -p ~/.config/nix
               echo 'experimental-features = nix-command flakes' > ~/.config/nix/nix.conf
             fi
-
             kl_bin_dir="/home/kl/.local/bin"
             if [ ! -f "$kl_bin_dir/kl" ]; then
               mkdir -p $kl_bin_dir
@@ -82,10 +97,10 @@ spec:
             if [ ! -f "/home/kl/.local/bin/starship" ]; then
               curl -sS https://starship.rs/install.sh | sh -s -- -y -b /home/kl/.local/bin
             fi
-
+            
             if [ ! -d "/home/kl/.config/zsh/zsh-autosuggestions" ]; then
               mkdir -p "/home/kl/.config/zsh"
-              git clone https://github.com/zsh-users/zsh-autosuggestions
+              git clone https://github.com/zsh-users/zsh-autosuggestions /home/kl/.config/zsh/zsh-autosuggestions
             fi
 
             if [ ! -d "/home/kl/.config/zsh/zsh-syntax-highlighting" ]; then
@@ -100,15 +115,20 @@ spec:
             {{- /*   team: {{.KloudliteTeam}} */}}
             {{- /*   EOF' */}}
             {{- /* fi */}}
-            
             if [ ! -f "/home/kl/.local/bin/kubectl" ]; then
+              pushd /home/kl/.local/bin
               curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
               chmod +x /home/kl/.local/bin/kubectl
+              popd
             fi
 
           volumeMounts: &volume-mounts
             - mountPath: /home/kl
               name: home-dir
+            
+            - mountPath: /tmp/authorized_keys
+              name: ssh-keys
+              subPath: authorized_keys
 
             - mountPath: /nix
               name: nix-dir
@@ -191,11 +211,19 @@ spec:
       
       - name: home-dir
         hostPath:
-          path: /var/user-home/
+          path: /external-volume/user-home
 
       - name: nix-dir
         hostPath:
-          path: /var/nix-dir/
+          path: /external-volume/nix
+      
+      - name: ssh-keys
+        secret:
+          secretName: ssh-public-keys
+          defaultMode: 0400
+          items:
+          - key: authorized_keys
+            path: authorized_keys
 ---
 apiVersion: v1
 kind: Service
@@ -204,23 +232,23 @@ spec:
   ports:
     - name: "ssh"
       protocol: "TCP"
-      port: "22"
-      targetPort: "22"
+      port: 22
+      targetPort: 22
 
     - name: "ttyd-server"
       protocol: "TCP"
-      port: "54535"
-      targetPort: "54535"
+      port: 54535
+      targetPort: 54535
 
     - name: "jupyter-server"
       protocol: "TCP"
-      port: "8888"
-      targetPort: "8888"
+      port: 8888
+      targetPort: 8888
 
     - name: "code-server"
       protocol: "TCP"
-      port: "8080"
-      targetPort: "8080"
+      port: 8080
+      targetPort: 8080
 ---
 
 apiVersion: crds.kloudlite.io/v1
