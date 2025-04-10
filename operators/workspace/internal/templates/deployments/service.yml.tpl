@@ -33,7 +33,7 @@ spec:
       targetPort: {{.PortConfig.CodeServerPort}}
 {{ end }}
 
-{{- end }}
+
 ---
 apiVersion: v1
 kind: Service
@@ -42,7 +42,10 @@ metadata:
   namespace: {{.Metadata.Namespace}}
   labels: {{.Metadata.Labels | toJson }}
   annotations: {{.Metadata.Annotations | toJson }}
+  ownerReferences: {{.Metadata.OwnerReferences | toJson }}
 spec:
   clusterIP: None
   selector:
     app: {{.Metadata.Name | squote}}
+
+{{- end }}

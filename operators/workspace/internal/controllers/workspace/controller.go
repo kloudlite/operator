@@ -23,6 +23,19 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 )
 
+var (
+	PortConfig = templates.PortConfig{
+		SSHPort:        22,
+		TTYDPort:       56789,
+		NotebookPort:   56790,
+		CodeServerPort: 56791,
+	}
+)
+
+const (
+	IngressClassName = "nginx"
+)
+
 type Reconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
@@ -151,14 +164,10 @@ func (r *Reconciler) createDeployment(req *rApi.Request[*crdsv1.Workspace]) step
 		ImagePullPolicy:     obj.Spec.ImagePullPolicy,
 		KloudliteDeviceFQDN: fmt.Sprintf("%s-headless.%s.svc.cluster.local", obj.Name, obj.Namespace),
 
-		PortConfig: templates.PortConfig{
-			SSHPort:        22,
-			TTYDPort:       56789,
-			NotebookPort:   56790,
-			CodeServerPort: 56791,
-		},
+		PortConfig: PortConfig,
 
-		RouterSpec: obj.Spec.Router,
+		RouterSpec:       obj.Spec.Router,
+		IngressClassName: IngressClassName,
 	})
 	if err != nil {
 		return check.Failed(err)

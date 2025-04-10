@@ -39,6 +39,7 @@ type WorkspaceTemplateArgs struct {
 
 	KloudliteDomain string
 
-	RouterSpec crdsv1.RouterSpec
-	PortConfig PortConfig
+	RouterSpec       crdsv1.RouterSpec
+	PortConfig       PortConfig
+	IngressClassName string
 }
