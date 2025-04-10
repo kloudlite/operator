@@ -149,7 +149,7 @@ func (r *Reconciler) createDeployment(req *rApi.Request[*crdsv1.Workspace]) step
 		ImageVscodeServer:  r.Env.WorkspcaeImageVscodeServer,
 
 		ImagePullPolicy:     obj.Spec.ImagePullPolicy,
-		KloudliteDeviceFQDN: fmt.Sprintf("%s.%s.svc.cluster.local", obj.Name, obj.Namespace),
+		KloudliteDeviceFQDN: fmt.Sprintf("%s-headless.%s.svc.cluster.local", obj.Name, obj.Namespace),
 
 		PortConfig: templates.PortConfig{
 			SSHPort:        22,
