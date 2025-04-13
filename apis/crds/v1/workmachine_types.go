@@ -48,7 +48,7 @@ type WorkMachineSpec struct {
 	State         WorkMachineState `json:"state"`
 	SSHPublicKeys []string         `json:"sshPublicKeys"`
 
-	JobParams WorkMachineJobParams `json:"jobParams"`
+	JobParams WorkMachineJobParams `json:"jobParams,omitempty"`
 
 	TargetNamespace string `json:"targetNamespace,omitempty"`
 
