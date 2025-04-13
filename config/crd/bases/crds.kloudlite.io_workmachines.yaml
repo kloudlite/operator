@@ -136,6 +136,8 @@ spec:
                       type: object
                     type: array
                 type: object
+              sessionToken:
+                type: string
               sshPublicKeys:
                 items:
                   type: string
