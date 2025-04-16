@@ -31,7 +31,7 @@ type WorkspaceSpec struct {
 	// +kubebuilder:default=IfNotPresent
 	ImagePullPolicy string `json:"imagePullPolicy"`
 
-	Router RouterSpec `json:"router"`
+	// Router RouterSpec `json:"router"`
 }
 
 // +kubebuilder:object:root=true

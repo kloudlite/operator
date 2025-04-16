@@ -7,17 +7,27 @@ import (
 	"github.com/kloudlite/operator/pkg/templates"
 )
 
-//go:embed *
+//go:embed deployments/*
 var templatesDir embed.FS
 
 type templateFile string
 
 const (
-	WorkspaceTemplate  templateFile = "./workspace.yml.tpl"
+	WorkspaceSTSTemplate     templateFile = "./deployments/sts.yml.tpl"
+	WorkspaceIngressTemplate templateFile = "./deployments/ingress.yml.tpl"
+	WorkspaceServiceTemplate templateFile = "./deployments/service.yml.tpl"
 )
 
-func Read(t templateFile) ([]byte, error) {
-	return templatesDir.ReadFile(filepath.Join(string(t)))
+func Read(tPaths ...templateFile) ([]byte, error) {
+	var data []byte
+	for _, t := range tPaths {
+		d, err := templatesDir.ReadFile(filepath.Join(string(t)))
+		if err != nil {
+			return nil, err
+		}
+		data = append(data, d...)
+	}
+	return data, nil
 }
 
 var ParseBytes = templates.ParseBytes

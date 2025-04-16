@@ -11,9 +11,9 @@ type AWSMachineConfig struct {
 	Region           string `json:"region" graphql:"noinput"`
 	AvailabilityZone string `json:"availabilityZone"`
 
-	AMI            string `json:"ami"`
-	InstanceType   string `json:"instanceType"`
-	PublicSubnetID string `json:"publicSubnetID"`
+	AMI          string `json:"ami"`
+	InstanceType string `json:"instanceType"`
+	// PublicSubnetID string `json:"publicSubnetID"`
 
 	//+kubebuilder:default=50
 	RootVolumeSize int `json:"rootVolumeSize" graphql:"noinput"`
@@ -48,7 +48,7 @@ type WorkMachineSpec struct {
 	State         WorkMachineState `json:"state"`
 	SSHPublicKeys []string         `json:"sshPublicKeys"`
 
-	JobParams WorkMachineJobParams `json:"jobParams"`
+	JobParams WorkMachineJobParams `json:"jobParams,omitempty"`
 
 	TargetNamespace string `json:"targetNamespace,omitempty"`
 

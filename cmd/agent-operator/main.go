@@ -5,11 +5,10 @@ import (
 
 	// helmCharts "github.com/kloudlite/operator/operators/helm-charts/controller"
 	lifecycle "github.com/kloudlite/operator/operators/lifecycle/controller"
-	workspace "github.com/kloudlite/operator/operators/workspace/register"
 
 	// routers "github.com/kloudlite/operator/operators/routers/controller"
 
-	workmachine "github.com/kloudlite/operator/operators/workmachine/register"
+	workspace "github.com/kloudlite/operator/operators/workspace/register"
 )
 
 func main() {
@@ -40,7 +39,7 @@ func main() {
 
 	// serviceIntercept.RegisterInto(mgr)
 	workspace.RegisterInto(mgr)
-	workmachine.RegisterInto(mgr)
+	// workmachine.RegisterInto(mgr)
 
 	// pluginMongoDB.RegisterInto(mgr)
 	// pluginHelmChart.RegisterInto(mgr)

@@ -149,6 +149,7 @@ type ClusterParams struct {
 
 	AwsVPCName string `json:"aws_vpc_name"`
 	AwsVPCId   string `json:"aws_vpc_id"`
+	SubnetId   string `json:"subnet_id"`
 
 	AwsNLBDNSHost string `json:"aws_nlb_dns_host"`
 
@@ -206,7 +207,7 @@ func (r *Reconciler) parseSpecIntoTFValues(ctx context.Context, obj *crdsv1.Work
 				"root_volume_size":   obj.Spec.AWSMachineConfig.RootVolumeSize,
 				"root_volume_type":   obj.Spec.AWSMachineConfig.RootVolumeType,
 				"security_group_ids": cp.AwsSecurityGroupIDs,
-				"subnet_id":          obj.Spec.AWSMachineConfig.PublicSubnetID,
+				"subnet_id":          cp.SubnetId,
 			})
 		}
 	default:

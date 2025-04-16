@@ -5,9 +5,17 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+type PortConfig struct {
+	TTYDPort       int32
+	SSHPort        int32
+	NotebookPort   int32
+	CodeServerPort int32
+}
+
 type WorkspaceTemplateArgs struct {
 	Metadata           metav1.ObjectMeta
-	NodeName           string
+	WorkMachineName    string
+	IsOn               bool
 	ServiceAccountName string
 
 	ImageInitContainer string
@@ -29,7 +37,9 @@ type WorkspaceTemplateArgs struct {
 
 	KloudliteDeviceFQDN string
 
-	RouterSpec crdsv1.RouterSpec
+	KloudliteDomain string
 
-	WorkMachineName string
+	RouterSpec       crdsv1.RouterSpec
+	PortConfig       PortConfig
+	IngressClassName string
 }

@@ -70,8 +70,6 @@ spec:
                     type: string
                   instanceType:
                     type: string
-                  publicSubnetID:
-                    type: string
                   region:
                     type: string
                   rootVolumeSize:
@@ -86,7 +84,6 @@ spec:
                 - externalVolumeSize
                 - externalVolumeType
                 - instanceType
-                - publicSubnetID
                 - region
                 - rootVolumeSize
                 - rootVolumeType
