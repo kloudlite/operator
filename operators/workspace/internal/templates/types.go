@@ -30,4 +30,6 @@ type WorkspaceTemplateArgs struct {
 	KloudliteDeviceFQDN string
 
 	RouterSpec crdsv1.RouterSpec
+
+	WorkMachineName string
 }

@@ -21,8 +21,7 @@ type WorkspaceSpec struct {
 	WorkMachine string `json:"workMachine"`
 
 	State              WorkspaceState `json:"state"`
-	NodeName           string         `json:"nodeName"`
-	ServiceAccountName string         `json:"serviceAccountName"`
+	ServiceAccountName string         `json:"serviceAccountName,omitempty"`
 
 	EnableTTYD            bool `json:"enableTTYD,omitempty"`
 	EnableJupyterNotebook bool `json:"enableJupyterNotebook,omitempty"`
@@ -37,10 +36,10 @@ type WorkspaceSpec struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:scope=Cluster
+// +kubebuilder:resource:scope=Namespaced
 // +kubebuilder:printcolumn:JSONPath=".status.lastReconcileTime",name=Seen,type=date
-// +kubebuilder:printcolumn:JSONPath=".metadata.annotations.kloudlite\\.io\\/checks",name=Checks,type=string
-// +kubebuilder:printcolumn:JSONPath=".metadata.annotations.kloudlite\\.io\\/resource\\.ready",name=Ready,type=string
+// +kubebuilder:printcolumn:JSONPath=".metadata.annotations.kloudlite\\.io\\/operator\\.checks",name=Checks,type=string
+// +kubebuilder:printcolumn:JSONPath=".metadata.annotations.kloudlite\\.io\\/operator\\.resource\\.ready",name=Ready,type=string
 // +kubebuilder:printcolumn:JSONPath=".metadata.creationTimestamp",name=Age,type=date
 
 // Workspace is the Schema for the workspaces API

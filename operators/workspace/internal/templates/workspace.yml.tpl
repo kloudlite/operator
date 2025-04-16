@@ -13,12 +13,12 @@ spec:
         kloudlite.io/gateway.enabled: "false"
     spec:
       hostname: {{.Metadata.Name}}
-      nodeName: {{.NodeName}}
-      serviceAccount: {{.ServiceAccountName | squote}}
+      nodeName: {{.WorkMachineName}}
+      # serviceAccount: {{.ServiceAccountName | squote}}
       tolerations:
         - key: "kloudlite.io/worknode"
           operator: "Equal"
-          value: {{.NodeName |squote}}
+          value: {{.WorkMachineName |squote}}
           effect: "NoExecute"
       initContainers:
         - name: init-home-dir
@@ -27,13 +27,10 @@ spec:
           env:
             - name: KL_WORKSPACE
               value: {{.Metadata.Name}}
-
             - name: HOME
               value: "/home/kl"
-
             - name: KL_BOX_MODE
               value: "true"
-
           securityContext:
             runAsUser: 1000
             runAsGroup: 1000
@@ -43,6 +40,7 @@ spec:
           - |
             set -e
             set +x
+            sleep infinity
             if [ ! -d "/nix/store" ]; then
               curl -L https://nixos.org/nix/install | sh
               mkdir -p ~/.config/nix
@@ -115,6 +113,10 @@ spec:
 
             - mountPath: /env
               name: containerenv
+            
+            - mountPath: /home/kl/.ssh/authorized_keys
+              name: sshkey
+              subPath: authorized_keys
 
       containers:
         - name: ssh
@@ -186,16 +188,20 @@ spec:
       {{ end }}
 
       volumes:
+      - name: sshkey
+        secret:
+          secretName: ssh-public-keys
+
       - name: containerenv
         emptyDir: {}
       
       - name: home-dir
         hostPath:
-          path: /var/user-home/
+          path: /external-volume/user-home
 
       - name: nix-dir
         hostPath:
-          path: /var/nix-dir/
+          path: /external-volume/nix
 ---
 apiVersion: v1
 kind: Service
@@ -204,23 +210,23 @@ spec:
   ports:
     - name: "ssh"
       protocol: "TCP"
-      port: "22"
-      targetPort: "22"
+      port: 22
+      targetPort: 22
 
     - name: "ttyd-server"
       protocol: "TCP"
-      port: "54535"
-      targetPort: "54535"
+      port: 54535
+      targetPort: 54535
 
     - name: "jupyter-server"
       protocol: "TCP"
-      port: "8888"
-      targetPort: "8888"
+      port: 8888
+      targetPort: 8888
 
     - name: "code-server"
       protocol: "TCP"
-      port: "8080"
-      targetPort: "8080"
+      port: 8080
+      targetPort: 8080
 ---
 
 apiVersion: crds.kloudlite.io/v1

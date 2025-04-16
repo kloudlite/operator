@@ -132,7 +132,7 @@ func (r *Reconciler) createDeployment(req *rApi.Request[*crdsv1.Workspace]) step
 			Namespace:       obj.Namespace,
 			OwnerReferences: []metav1.OwnerReference{fn.AsOwner(obj, true)},
 		},
-		NodeName:           obj.Spec.NodeName,
+		WorkMachineName:    obj.Spec.WorkMachine,
 		ServiceAccountName: obj.Spec.ServiceAccountName,
 		ImageInitContainer: r.Env.WorkspaceImageInitContainer,
 		ImageSSH:           r.Env.WorkspaceImageSSH,

@@ -2,10 +2,9 @@ apiVersion: crds.kloudlite.io/v1
 kind: Workspace
 metadata:
   name: sample
-  namespace: default
+  namespace: wm-sample
 spec:
   state: "ON"
-  nodeName: "worker-2"
   serviceAccountName: "kloudlite"
   enableCodeServer: false
   enableVSCodeServer: false
