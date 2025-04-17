@@ -160,6 +160,7 @@ func (r *Reconciler) createDeployment(req *rApi.Request[*crdsv1.Workspace]) step
 
 		EnableVSCodeServer: obj.Spec.EnableVSCodeServer,
 		ImageVscodeServer:  r.Env.WorkspcaeImageVscodeServer,
+		PortConfig:         PortConfig,
 
 		ImagePullPolicy:     obj.Spec.ImagePullPolicy,
 		KloudliteDeviceFQDN: fmt.Sprintf("%s-headless.%s.svc.cluster.local", obj.Name, obj.Namespace),
