@@ -8,8 +8,8 @@ import (
 )
 
 type AWSMachineConfig struct {
-	Region           string `json:"region" graphql:"noinput"`
-	AvailabilityZone string `json:"availabilityZone"`
+	// Region           string `json:"region" graphql:"noinput"`
+	// AvailabilityZone string `json:"availabilityZone"`
 
 	AMI          string `json:"ami"`
 	InstanceType string `json:"instanceType"`

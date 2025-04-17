@@ -59,8 +59,6 @@ spec:
                 properties:
                   ami:
                     type: string
-                  availabilityZone:
-                    type: string
                   externalVolumeSize:
                     type: integer
                   externalVolumeType:
@@ -70,8 +68,6 @@ spec:
                     type: string
                   instanceType:
                     type: string
-                  region:
-                    type: string
                   rootVolumeSize:
                     default: 50
                     type: integer
@@ -80,11 +76,9 @@ spec:
                     type: string
                 required:
                 - ami
-                - availabilityZone
                 - externalVolumeSize
                 - externalVolumeType
                 - instanceType
-                - region
                 - rootVolumeSize
                 - rootVolumeType
                 type: object
@@ -146,7 +140,6 @@ spec:
                 type: string
             required:
             - aws
-            - jobParams
             - sshPublicKeys
             - state
             type: object

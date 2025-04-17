@@ -147,9 +147,11 @@ type ClusterParams struct {
 
 	K3sVersion string `json:"k3s_version"`
 
-	AwsVPCName string `json:"aws_vpc_name"`
-	AwsVPCId   string `json:"aws_vpc_id"`
-	SubnetId   string `json:"subnet_id"`
+	AwsVPCName        string `json:"aws_vpc_name"`
+	AwsVPCId          string `json:"aws_vpc_id"`
+	AwsPublicSubnet   string `json:"aws_public_subnet"`
+	AwsRegion         string `json:"aws_region"`
+	AwsAvailblityZone string `json:"aws_availblity_zone"`
 
 	AwsNLBDNSHost string `json:"aws_nlb_dns_host"`
 
@@ -181,7 +183,7 @@ func (r *Reconciler) parseSpecIntoTFValues(ctx context.Context, obj *crdsv1.Work
 	case ct.CloudProviderAWS:
 		{
 			return json.Marshal(map[string]any{
-				"aws_region":      obj.Spec.AWSMachineConfig.Region,
+				"aws_region":      cp.AwsRegion,
 				"trace_id":        "workmachine-" + obj.Name,
 				"vpc_id":          cp.AwsVPCId,
 				"name":            obj.Name,
@@ -197,7 +199,7 @@ func (r *Reconciler) parseSpecIntoTFValues(ctx context.Context, obj *crdsv1.Work
 
 					return "stopped"
 				}(),
-				"availability_zone": obj.Spec.AWSMachineConfig.AvailabilityZone,
+				"availability_zone": cp.AwsAvailblityZone,
 				// "iam_instance_profile": func() string {
 				// 	if obj.Spec.AWSMachineConfig.IAMInstanceProfileRole != nil {
 				// 		return *obj.Spec.AWSMachineConfig.IAMInstanceProfileRole
@@ -207,7 +209,7 @@ func (r *Reconciler) parseSpecIntoTFValues(ctx context.Context, obj *crdsv1.Work
 				"root_volume_size":   obj.Spec.AWSMachineConfig.RootVolumeSize,
 				"root_volume_type":   obj.Spec.AWSMachineConfig.RootVolumeType,
 				"security_group_ids": cp.AwsSecurityGroupIDs,
-				"subnet_id":          cp.SubnetId,
+				"subnet_id":          cp.AwsPublicSubnet,
 			})
 		}
 	default:

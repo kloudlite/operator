@@ -8,7 +8,7 @@ import (
 
 	// routers "github.com/kloudlite/operator/operators/routers/controller"
 
-	workspace "github.com/kloudlite/operator/operators/workspace/register"
+	workmachine "github.com/kloudlite/operator/operators/workmachine/register"
 )
 
 func main() {
@@ -38,7 +38,7 @@ func main() {
 	// networkingv1.RegisterInto(mgr)
 
 	// serviceIntercept.RegisterInto(mgr)
-	workspace.RegisterInto(mgr)
+	workmachine.RegisterInto(mgr)
 	// workmachine.RegisterInto(mgr)
 
 	// pluginMongoDB.RegisterInto(mgr)

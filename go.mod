@@ -21,7 +21,6 @@ require (
 	github.com/goombaio/namegenerator v0.0.0-20181006234301-989e774b106e
 	github.com/influxdata/influxdb-client-go/v2 v2.14.0
 	github.com/kloudlite/operator/toolkit v0.0.0-20250316093242-493e9b587c10
-	github.com/kloudlite/plugin-helm-chart v0.0.0-20250317052100-fef043b111a2
 	github.com/kloudlite/plugin-mongodb v0.0.0-20250316175205-312ba86d8873
 	github.com/matoous/go-nanoid/v2 v2.1.0
 	github.com/miekg/dns v1.1.62
