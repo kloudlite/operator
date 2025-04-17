@@ -18,8 +18,9 @@ const (
 // WorkspaceSpec defines the desired state of Workspace
 type WorkspaceSpec struct {
 	// Name of work machine
-	WorkMachine string `json:"workMachine"`
+	WorkMachine string `json:"workMachine" graphql:"noinput"`
 
+	// +kubebuilder:default=ON
 	State              WorkspaceState `json:"state"`
 	ServiceAccountName string         `json:"serviceAccountName,omitempty"`
 
@@ -29,7 +30,7 @@ type WorkspaceSpec struct {
 	EnableVSCodeServer    bool `json:"enableVSCodeServer,omitempty"`
 
 	// +kubebuilder:default=IfNotPresent
-	ImagePullPolicy string `json:"imagePullPolicy"`
+	ImagePullPolicy string `json:"imagePullPolicy,omitempty"`
 
 	// Router RouterSpec `json:"router"`
 }

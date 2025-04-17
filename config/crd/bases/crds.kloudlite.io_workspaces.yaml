@@ -66,6 +66,7 @@ spec:
               serviceAccountName:
                 type: string
               state:
+                default: "ON"
                 enum:
                 - "ON"
                 - "OFF"
@@ -74,7 +75,6 @@ spec:
                 description: Name of work machine
                 type: string
             required:
-            - imagePullPolicy
             - state
             - workMachine
             type: object
