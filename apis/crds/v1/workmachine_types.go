@@ -64,8 +64,8 @@ func (wms *WorkMachineSpec) GetCloudProvider() ct.CloudProvider {
 }
 
 type WorkMachineStatus struct {
-	rApi.Status        `json:"status,omitempty"`
-	MachinePulicSSHKey string `json:"machineSSHKey,omitempty"`
+	rApi.Status         `json:"status,omitempty"`
+	MachinePublicSSHKey string `json:"machineSSHKey,omitempty"`
 }
 
 // +kubebuilder:object:root=true

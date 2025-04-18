@@ -13,6 +13,7 @@ import (
 	"github.com/kloudlite/operator/operators/workmachine/internal/env"
 	"github.com/kloudlite/operator/operators/workmachine/internal/templates"
 	"github.com/kloudlite/operator/pkg/constants"
+	"github.com/kloudlite/operator/pkg/ssh"
 	fn "github.com/kloudlite/operator/toolkit/functions"
 	"github.com/kloudlite/operator/toolkit/kubectl"
 	rApi "github.com/kloudlite/operator/toolkit/reconciler"
@@ -46,10 +47,11 @@ func (r *Reconciler) GetName() string {
 }
 
 const (
-	createWorkMachineJob          string = "create-work-machine-job"
-	createTargetNamespace         string = "create-target-namespace"
-	createSSHPublicKeysSecret     string = "create-ssh-public-keys-secret"
-	createSSHJumpServerDeployment string = "create-ssh-jumpserver-deployment"
+	createWorkMachineJob              string = "create-work-machine-job"
+	createTargetNamespace             string = "create-target-namespace"
+	createSSHPublicKeysSecret         string = "create-ssh-public-keys-secret"
+	createMachinePublicPrivateKeyPair string = "create-machine-public-private-key-pair"
+	createSSHJumpServerDeployment     string = "create-ssh-jumpserver-deployment"
 )
 
 const (
@@ -333,6 +335,31 @@ func (r *Reconciler) createSSHPublicKeysSecret(req *rApi.Request[*crdsv1.WorkMac
 		return check.Failed(err)
 	}
 
+	if secret.Data["private_key"] == nil || secret.Data["public_key"] == nil {
+		privateKeyPEM, publicKey, err := ssh.GenerateSSHKeyPair()
+		if err != nil {
+			return check.Failed(err)
+		}
+
+		if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, secret, func() error {
+			if secret.Data == nil {
+				secret.Data = make(map[string][]byte, 2)
+			}
+			secret.Data["public_key"] = publicKey
+			secret.Data["private_key"] = privateKeyPEM
+			return nil
+		}); err != nil {
+			return check.Failed(err)
+		}
+	}
+
+	// if obj.Status.MachinePublicSSHKey == "" {
+	// 	obj.Status.MachinePublicSSHKey = string(secret.Data["public_key"])
+	// 	if err := r.Status().Update(ctx, obj); err != nil {
+	// 		return check.Failed(err)
+	// 	}
+	// }
+
 	return check.Completed()
 }
 
@@ -353,7 +380,7 @@ func (r *Reconciler) createSSHJumpServer(req *rApi.Request[*crdsv1.WorkMachine])
 		return check.Failed(err)
 	}
 
-	deployment := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: sshJumpServerName, Namespace: obj.Namespace}}
+	deployment := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: sshJumpServerName, Namespace: obj.Spec.TargetNamespace}}
 	if _, err := controllerutil.CreateOrUpdate(ctx, r.Client, deployment, func() error {
 		deployment.SetOwnerReferences([]metav1.OwnerReference{fn.AsOwner(obj, true)})
 		fn.MapSet(&deployment.Annotations, constants.DescriptionKey, "this deployment is a ssh jump server used to allow users to jump to different workspaces")

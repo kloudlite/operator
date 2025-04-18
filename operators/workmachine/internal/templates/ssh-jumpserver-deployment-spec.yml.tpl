@@ -14,7 +14,7 @@ template:
         volumeMounts:
           - name: ssh-secret
             mountPath: /home/kl/.ssh/authorized_keys
-          subPath: authorized_keys
+            subPath: authorized_keys
 
     volumes:
       - name: ssh-secret
