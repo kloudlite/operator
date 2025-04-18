@@ -49,6 +49,7 @@ spec:
 
             if [ ! -d "/home/kl/.ssh" ]; then
               mkdir -p /home/kl/.ssh
+              chown -R 1000:1000 /home/kl/.ssh
             fi
             if [ -f "/home/kl/.ssh/authorized_keys" ]; then
               if ! cmp -s /tmp/authorized_keys /home/kl/.ssh/authorized_keys; then
@@ -64,14 +65,14 @@ spec:
             if [ -f "/home/kl/.ssh/id_rsa" ]; then
               if ! cmp -s /tmp/id_rsa /home/kl/.ssh/id_rsa; then
                 echo "id_rsa file differs, copying new one"
-                rm /home/kl/.ssh/id_rsa* || true
+                rm -f /home/kl/.ssh/id_rsa* 2>/dev/null || true
                 cp /tmp/id_rsa /home/kl/.ssh/id_rsa
                 cp /tmp/id_rsa.pub /home/kl/.ssh/id_rsa.pub
               fi
               echo "id_rsa file is up to date"
             else
               echo "id_rsa file not found, copying new one"
-              rm /home/kl/.ssh/id_rsa* || true
+              rm -f /home/kl/.ssh/id_rsa* 2>/dev/null || true
               cp /tmp/id_rsa /home/kl/.ssh/id_rsa
               cp /tmp/id_rsa.pub /home/kl/.ssh/id_rsa.pub
             fi
@@ -149,11 +150,11 @@ spec:
             
             - mountPath: /tmp/id_rsa.pub
               name: ssh-keys
-              subPath: id_rsa.pub
+              subPath: public_key
             
             - mountPath: /tmp/id_rsa
               name: ssh-keys
-              subPath: id_rsa
+              subPath: private_key
 
             - mountPath: /nix
               name: nix-dir
@@ -162,7 +163,7 @@ spec:
               name: containerenv
             
             - mountPath: /home/kl/.ssh/authorized_keys
-              name: sshkey
+              name: ssh-keys
               subPath: authorized_keys
 
       containers:
@@ -235,7 +236,7 @@ spec:
       {{ end }}
 
       volumes:
-      - name: sshkey
+      - name: ssh-keys
         secret:
           secretName: ssh-public-keys
 
