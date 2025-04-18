@@ -5,6 +5,8 @@ import (
 
 	lifecycle "github.com/kloudlite/operator/operators/lifecycle/controller"
 
+	resourceWatcher "github.com/kloudlite/operator/operators/resource-watcher/controller"
+
 	workmachine "github.com/kloudlite/operator/operators/workmachine/register"
 	workspace "github.com/kloudlite/operator/operators/workspace/register"
 )
@@ -29,7 +31,7 @@ func main() {
 	lifecycle.RegisterInto(mgr)
 
 	// kloudlite resource status updates
-	// resourceWatcher.RegisterInto(mgr)
+	resourceWatcher.RegisterInto(mgr)
 
 	// distribution.RegisterInto(mgr)
 
