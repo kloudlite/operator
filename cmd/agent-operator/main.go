@@ -3,6 +3,8 @@ package main
 import (
 	"github.com/kloudlite/operator/toolkit/operator"
 
+	lifecycle "github.com/kloudlite/operator/operators/lifecycle/controller"
+
 	workmachine "github.com/kloudlite/operator/operators/workmachine/register"
 	workspace "github.com/kloudlite/operator/operators/workspace/register"
 )
@@ -24,7 +26,7 @@ func main() {
 	// msvcMysql.RegisterInto(mgr)
 	// msvcPostgres.RegisterInto(mgr)
 
-	// lifecycle.RegisterInto(mgr)
+	lifecycle.RegisterInto(mgr)
 
 	// kloudlite resource status updates
 	// resourceWatcher.RegisterInto(mgr)
