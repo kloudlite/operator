@@ -440,7 +440,7 @@ var (
 	// BuildRunGVK              = newGVK("distribution.kloudlite.io/v1", "BuildRun")
 
 	ClusterManagedServiceGVK = newGVK("crds.kloudlite.io/v1", "ClusterManagedService")
-	HelmChartGVK             = newGVK("crds.kloudlite.io/v1", "HelmChart")
+	HelmChartGVK             = newGVK("plugin-helm-chart.kloudlite.github.com/v1", "HelmChart")
 	ProjectManageServiceGVK  = newGVK("crds.kloudlite.io/v1", "ProjectManagedService")
 
 	// native resources
