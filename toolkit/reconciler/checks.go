@@ -50,13 +50,13 @@ func AreChecksEqual(c1 Check, c2 Check) bool {
 		c1.StartedAt.Sub(c2.StartedAt.Time) == 0
 }
 
-type checkWrapper[T Resource] struct {
+type CheckWrapper[T Resource] struct {
 	checkName string
 	request   *Request[T]
 	Check     `json:",inline"`
 }
 
-func (cw *checkWrapper[T]) Failed(err error) step_result.Result {
+func (cw *CheckWrapper[T]) Failed(err error) step_result.Result {
 	defer cw.request.LogPostCheck(cw.checkName)
 
 	_, file, line, _ := runtime.Caller(1)
@@ -82,7 +82,7 @@ func (cw *checkWrapper[T]) Failed(err error) step_result.Result {
 	// return cw.request.updateStatus().Continue(false).Err(err)
 }
 
-func (cw *checkWrapper[T]) StillRunning(err error) step_result.Result {
+func (cw *CheckWrapper[T]) StillRunning(err error) step_result.Result {
 	defer cw.request.LogPostCheck(cw.checkName)
 
 	cw.Check.State = RunningState
@@ -104,7 +104,7 @@ func (cw *checkWrapper[T]) StillRunning(err error) step_result.Result {
 	// return cw.request.updateStatus().Continue(false).Err(err)
 }
 
-func (cw *checkWrapper[T]) Completed() step_result.Result {
+func (cw *CheckWrapper[T]) Completed() step_result.Result {
 	defer cw.request.LogPostCheck(cw.checkName)
 
 	cw.Check.State = CompletedState
@@ -119,8 +119,8 @@ func (cw *checkWrapper[T]) Completed() step_result.Result {
 	return step_result.New().Continue(true)
 }
 
-func NewRunningCheck[T Resource](name string, req *Request[T]) *checkWrapper[T] {
-	cw := &checkWrapper[T]{
+func NewRunningCheck[T Resource](name string, req *Request[T]) *CheckWrapper[T] {
+	cw := &CheckWrapper[T]{
 		checkName: name,
 		request:   req,
 		Check: Check{

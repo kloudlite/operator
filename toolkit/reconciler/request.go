@@ -448,7 +448,7 @@ func (r *Request[T]) AddToOwnedResources(refs ...ResourceRef) {
 	r.resourceRefs = append(r.resourceRefs, refs...)
 }
 
-func (r *Request[T]) CleanupOwnedResources(check *checkWrapper[T]) stepResult.Result {
+func (r *Request[T]) CleanupOwnedResources(check *CheckWrapper[T]) stepResult.Result {
 	resources := r.Object.GetStatus().Resources
 	objects := make([]client.Object, 0, len(resources))
 	for i := range resources {
@@ -474,7 +474,7 @@ INFO: this should only be used for very specific cases, where there is no other 
 Like, when deleting ManagedService
   - all managed resources should be deleted, but since owner is already getting deleted, there is no point in their proper cleanup
 */
-func (r *Request[T]) ForceCleanupOwnedResources(check *checkWrapper[T]) stepResult.Result {
+func (r *Request[T]) ForceCleanupOwnedResources(check *CheckWrapper[T]) stepResult.Result {
 	ctx := r.Context()
 	resources := r.Object.GetStatus().Resources
 
