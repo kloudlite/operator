@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -43,15 +44,15 @@ func NewJobTracker(ctx context.Context, kcli client.Client, args JobTrackerArgs)
 
 func (jr *JobTracker) HasJobFinished() bool {
 	for _, v := range jr.job.Status.Conditions {
-		if v.Type == batchv1.JobComplete && v.Status == "True" {
+		if v.Type == batchv1.JobComplete && v.Status == corev1.ConditionTrue {
 			return true
 		}
 
-		if v.Type == batchv1.JobFailed && v.Status == "True" {
+		if v.Type == batchv1.JobFailed && v.Status == corev1.ConditionTrue {
 			return true
 		}
 
-		if v.Type == batchv1.JobSuspended && v.Status == "True" {
+		if v.Type == batchv1.JobSuspended && v.Status == corev1.ConditionTrue {
 			return true
 		}
 	}
