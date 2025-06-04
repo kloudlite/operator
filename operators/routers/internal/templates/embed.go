@@ -13,7 +13,7 @@ type templateFile string
 
 const (
 	// IngressTemplate templateFile = "./ingress-resource-v2.yml.tpl"
-	IngressTemplate templateFile = "./ingress-resource.yml.tpl"
+	IngressTemplate templateFile = "ingress-resource.yml.tpl"
 )
 
 func Read(t templateFile) ([]byte, error) {

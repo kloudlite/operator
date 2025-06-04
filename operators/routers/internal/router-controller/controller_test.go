@@ -32,7 +32,7 @@ func newRouter() crdsv1.Router {
 			Routes: []string{"sample.example.com"},
 			Routes: []crdsv1.Route{
 				{
-					App:     "example",
+					Service:     "example",
 					Path:    "/",
 					Port:    80,
 					Rewrite: false,
@@ -156,7 +156,7 @@ var _ = Describe("router controller [UPDATE] says", func() {
 	It("adding a new route, reflects in each of the owned k8s ingresses", func() {
 		_, err := controllerutil.CreateOrUpdate(Suite.Context, Suite.K8sClient, &routerCr, func() error {
 			routerCr.Spec.Routes = append(routerCr.Spec.Routes, crdsv1.Route{
-				App:  "ginkgo-test",
+				Service:  "ginkgo-test",
 				Path: "/.kl/test",
 				Port: 80,
 			})

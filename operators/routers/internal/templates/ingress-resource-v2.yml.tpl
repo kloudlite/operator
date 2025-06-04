@@ -15,7 +15,7 @@ spec:
     {{- range $v := .WildcardDomains }}
     - hosts:
         - {{$v | squote}}
-    {{- end}}
+    {{- end }}
   {{- end}}
 
   rules:
@@ -30,6 +30,9 @@ spec:
                 name: {{$route.App}}
                 port:
                   number: {{$route.Port}}
+
+            path: {{ if not hasPrefix "/" $route.Path }}/{{end}}{{$route.Path}}
+            ({{if hasPrefix "/" $route.Path }}{{substr 1 $x $route.Path}}{{else}}{{$route.Path}}{{end}}.*)
 
             {{- if $route.Rewrite }}
             path: {{$route.Path}}?(.*)
